@@ -19,7 +19,7 @@ import { AuthService } from '../../services/auth.service';
         <div class="text-center mb-8">
           <div class="inline-flex items-center justify-center w-16 h-16 bg-primary-600/20 rounded-2xl mb-4 glow">
             <svg class="w-8 h-8 text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
             </svg>
           </div>
           <h1 class="text-3xl font-bold text-gradient">Join HireFlow AI</h1>

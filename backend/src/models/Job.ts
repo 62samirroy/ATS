@@ -29,7 +29,7 @@ const JobSchema: Schema = new Schema({
   type: { type: String, enum: ['Full-time', 'Part-time', 'Contract', 'Remote'], default: 'Full-time' },
   status: { type: String, enum: ['Draft', 'Published', 'Closed'], default: 'Draft' },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
+  companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company' },  // optional - not required for initial setup
 }, { timestamps: true });
 
 export default mongoose.model<IJob>('Job', JobSchema);

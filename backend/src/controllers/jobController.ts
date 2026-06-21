@@ -32,7 +32,18 @@ export const getJobById = async (req: Request, res: Response): Promise<void> => 
 // POST create job
 export const createJob = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const job = await Job.create({ ...req.body, createdBy: req.user.id, companyId: req.body.companyId || req.user.companyId });
+    const jobData: any = {
+      ...req.body,
+      createdBy: req.user.id,
+    };
+    // Only add companyId if it's a valid MongoDB ObjectId (not a placeholder string)
+    const companyId = req.body.companyId || req.user.companyId;
+    if (companyId && companyId !== 'default-company' && companyId.length === 24) {
+      jobData.companyId = companyId;
+    } else {
+      delete jobData.companyId; // remove invalid placeholder
+    }
+    const job = await Job.create(jobData);
     res.status(201).json(job);
   } catch (error: any) {
     res.status(500).json({ message: error.message });

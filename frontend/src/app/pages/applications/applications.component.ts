@@ -1,128 +1,245 @@
 import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApplicationService } from '../../services/application.service';
 import { JobService } from '../../services/job.service';
-import { CandidateService } from '../../services/candidate.service';
 
 @Component({
   selector: 'app-applications',
   standalone: true,
   imports: [CommonModule, RouterModule, FormsModule],
   template: `
-    <div class="space-y-6 animate-fade-in">
+    <div class="animate-fade-in">
+
+      <!-- Page Header -->
       <div class="page-header">
         <div>
-          <h1 class="page-title">Applications Pipeline</h1>
-          <p class="page-subtitle">Track candidates through the hiring pipeline</p>
+          <h1 class="page-title">Job Applications</h1>
+          <p class="page-subtitle">Manage and track all job applications</p>
         </div>
-        <div class="flex gap-2">
-          <button (click)="viewMode = 'kanban'" [class]="viewMode === 'kanban' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
-            Kanban
+        <div style="display:flex;gap:0.5rem;align-items:center">
+          <button class="btn-primary" style="gap:0.375rem">
+            <i class="fa-solid fa-upload" style="font-size:0.75rem"></i> Import
           </button>
-          <button (click)="viewMode = 'list'" [class]="viewMode === 'list' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
-            List
+          <button class="btn-secondary" style="color:var(--danger);border-color:rgba(220,38,38,0.25)">
+            <i class="fa-solid fa-trash-can" style="font-size:0.75rem"></i> Recycle Bin
           </button>
         </div>
       </div>
 
-      <!-- Filters -->
-      <div class="card">
-        <div class="flex flex-wrap gap-3">
-          <div class="search-bar flex-1 min-w-48">
-            <svg class="search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            <input type="text" [(ngModel)]="search" (input)="filterApps()" class="search-input" placeholder="Search candidate...">
-          </div>
-          <select [(ngModel)]="selectedJob" (change)="filterApps()" class="form-select w-48">
-            <option value="">All Jobs</option>
-            <option *ngFor="let j of jobs" [value]="j._id">{{ j.title }}</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Kanban View -->
-      <div *ngIf="viewMode === 'kanban'" class="flex gap-4 overflow-x-auto pb-4">
-        <div *ngFor="let stage of stages" class="pipeline-stage flex-shrink-0 w-56">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">{{ stage.label }}</span>
-            <span class="badge" [class]="stage.badgeClass">{{ getByStage(stage.key).length }}</span>
-          </div>
-          <div class="space-y-2">
-            <div *ngFor="let app of getByStage(stage.key)" class="pipeline-card">
-              <div class="flex items-center gap-2 mb-2">
-                <div class="avatar w-7 h-7 text-xs flex items-center justify-center">{{ app.candidateId?.name?.charAt(0) || '?' }}</div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-xs font-semibold text-white truncate">{{ app.candidateId?.name || 'Candidate' }}</p>
-                </div>
-              </div>
-              <p class="text-xs text-slate-500 truncate mb-2">{{ app.jobId?.title || 'Job' }}</p>
-              <div *ngIf="app.candidateId?.aiScore" class="mb-2">
-                <div class="flex items-center justify-between mb-1">
-                  <span class="text-xs text-slate-500">AI Score</span>
-                  <span class="text-xs font-bold" [class]="getScoreColor(app.candidateId.aiScore)">{{ app.candidateId.aiScore }}%</span>
-                </div>
-                <div class="ai-score-bar h-1">
-                  <div class="ai-score-fill" [style.width.%]="app.candidateId.aiScore" [style.background]="getScoreGrad(app.candidateId.aiScore)"></div>
-                </div>
-              </div>
-              <div class="flex gap-1">
-                <button *ngFor="let action of getNextStages(stage.key)" (click)="moveStage(app, action.key)" class="flex-1 text-xs py-1 rounded-lg border transition-colors"
-                        [class]="action.key === 'Rejected' ? 'border-red-600/30 text-red-400 hover:bg-red-600/10' : 'border-primary-600/30 text-primary-400 hover:bg-primary-600/10'">
-                  {{ action.label }}
-                </button>
-              </div>
+      <!-- Stat Cards -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0.75rem;margin-bottom:1rem">
+        <div *ngFor="let s of statCards" class="stat-card" style="padding:0.75rem 0.875rem">
+          <div style="display:flex;align-items:center;gap:0.5rem">
+            <div [style.background]="s.iconBg" style="width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <i [class]="s.icon" [style.color]="s.iconColor" style="font-size:0.9rem"></i>
+            </div>
+            <div>
+              <div style="font-size:0.625rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.04em;line-height:1.2">{{ s.label }}</div>
+              <div style="font-size:1.25rem;font-weight:800;color:var(--text);line-height:1.1">{{ s.value }}</div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- List View -->
-      <div *ngIf="viewMode === 'list'" class="card p-0">
-        <div class="table-container">
+      <!-- Main Card -->
+      <div class="card" style="padding:0;overflow:hidden">
+
+        <!-- Status Tabs -->
+        <div class="status-tabs">
+          <button *ngFor="let tab of statusTabs" class="status-tab" [class.active]="activeTab===tab.key" (click)="setTab(tab.key)">
+            {{ tab.label }}
+            <span class="status-tab-count">{{ getTabCount(tab.key) }}</span>
+          </button>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+          <div class="search-wrap" style="flex:1;min-width:180px;max-width:280px">
+            <svg class="search-icon-inner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" [(ngModel)]="search" (input)="applyFilter()" placeholder="Search applications...">
+          </div>
+          <select [(ngModel)]="selectedJob" (change)="applyFilter()" class="form-select" style="width:auto;min-width:130px">
+            <option value="">All Job Titles</option>
+            <option *ngFor="let j of jobs" [value]="j._id">{{ j.title }}</option>
+          </select>
+          <select [(ngModel)]="statusFilter" (change)="applyFilter()" class="form-select" style="width:auto;min-width:120px">
+            <option value="">All Statuses</option>
+            <option *ngFor="let s of allStatuses" [value]="s">{{ s }}</option>
+          </select>
+          <div style="display:flex;align-items:center;gap:4px;padding:0.3125rem 0.625rem;background:#fff;border:1px solid var(--border);border-radius:6px;font-size:0.75rem;color:var(--muted);white-space:nowrap;cursor:pointer">
+            <i class="fa-regular fa-calendar" style="font-size:0.75rem"></i>
+            <span>Date Range</span>
+          </div>
+          <!-- View Toggle -->
+          <div style="display:flex;gap:2px;margin-left:auto">
+            <button class="view-toggle-btn" [class.active]="viewMode==='list'" (click)="viewMode='list'" title="List View">
+              <i class="fa-solid fa-list"></i>
+            </button>
+            <button class="view-toggle-btn" [class.active]="viewMode==='card'" (click)="viewMode='card'" title="Card View">
+              <i class="fa-solid fa-grip"></i>
+            </button>
+            <button class="view-toggle-btn" [class.active]="viewMode==='kanban'" (click)="viewMode='kanban'" title="Kanban View">
+              <i class="fa-solid fa-table-columns"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Loading -->
+        <div *ngIf="loading" style="padding:1.5rem">
+          <div *ngFor="let i of [1,2,3,4,5]" class="skeleton" style="height:44px;margin-bottom:6px"></div>
+        </div>
+
+        <!-- Empty -->
+        <div *ngIf="!loading && pagedApps.length===0" style="text-align:center;padding:4rem 2rem;color:var(--muted)">
+          <i class="fa-solid fa-folder-open" style="font-size:2.5rem;color:var(--border);display:block;margin-bottom:1rem"></i>
+          <p style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:0.25rem">No applications found</p>
+          <p style="font-size:0.875rem">Try adjusting your search or filters</p>
+        </div>
+
+        <!-- ===== LIST VIEW ===== -->
+        <div *ngIf="!loading && pagedApps.length>0 && viewMode==='list'" class="table-container">
           <table class="table">
             <thead>
               <tr>
-                <th>Candidate</th>
-                <th>Job</th>
-                <th>Applied</th>
+                <th style="width:36px"><input type="checkbox" style="width:14px;height:14px;accent-color:var(--primary);cursor:pointer"></th>
+                <th>App ID</th>
+                <th>Applicant</th>
+                <th>Job Position</th>
+                <th>Applied Date</th>
                 <th>Status</th>
-                <th>AI Score</th>
-                <th>Actions</th>
+                <th>Meeting</th>
+                <th>Rating</th>
+                <th style="width:40px"></th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngIf="loading"><td colspan="6" class="text-center py-8 text-slate-500">Loading...</td></tr>
-              <tr *ngFor="let app of filteredApps">
+              <tr *ngFor="let app of pagedApps">
+                <td><input type="checkbox" style="width:14px;height:14px;accent-color:var(--primary);cursor:pointer"></td>
                 <td>
-                  <div class="flex items-center gap-2">
-                    <div class="avatar w-8 h-8 text-xs flex items-center justify-center">{{ app.candidateId?.name?.charAt(0) || '?' }}</div>
+                  <div style="font-size:0.75rem;font-weight:700;color:var(--primary)">{{ app.appId }}</div>
+                </td>
+                <td>
+                  <div style="display:flex;align-items:center;gap:0.5rem">
+                    <div class="avatar" style="width:30px;height:30px;font-size:0.75rem;flex-shrink:0">{{ app.candidateId?.name?.charAt(0)||'?' }}</div>
                     <div>
-                      <p class="font-medium text-white text-sm">{{ app.candidateId?.name || 'Unknown' }}</p>
-                      <p class="text-xs text-slate-500">{{ app.candidateId?.email }}</p>
+                      <div style="font-weight:600;color:var(--text);font-size:0.8125rem">{{ app.candidateId?.name||'Unknown' }}</div>
+                      <div style="font-size:0.6875rem;color:var(--muted)">{{ app.candidateId?.phone||app.candidateId?.email }}</div>
                     </div>
                   </div>
                 </td>
-                <td class="text-sm text-slate-300">{{ app.jobId?.title || 'N/A' }}</td>
-                <td class="text-sm text-slate-400">{{ app.appliedDate | date:'mediumDate' }}</td>
+                <td style="font-size:0.8125rem;color:var(--text);max-width:180px">
+                  <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ app.jobId?.title||'N/A' }}</div>
+                </td>
+                <td style="font-size:0.75rem;color:var(--muted)">{{ app.appliedDate | date:'dd MMM yyyy' }}</td>
                 <td><span [class]="getStatusBadge(app.status)">{{ app.status }}</span></td>
                 <td>
-                  <div *ngIf="app.candidateId?.aiScore" class="flex items-center gap-2">
-                    <div class="w-16 ai-score-bar"><div class="ai-score-fill" [style.width.%]="app.candidateId.aiScore" [style.background]="getScoreGrad(app.candidateId.aiScore)"></div></div>
-                    <span class="text-sm font-semibold" [class]="getScoreColor(app.candidateId.aiScore)">{{ app.candidateId.aiScore }}%</span>
-                  </div>
-                  <span *ngIf="!app.candidateId?.aiScore" class="text-slate-600 text-sm">Not ranked</span>
+                  <span *ngIf="app.meetingStatus" [class]="getMeetingBadge(app.meetingStatus)">{{ app.meetingStatus }}</span>
+                  <span *ngIf="!app.meetingStatus" style="color:var(--muted)">—</span>
                 </td>
                 <td>
-                  <select class="form-select text-xs py-1 w-32" [value]="app.status" (change)="moveStage(app, $any($event.target).value)">
-                    <option *ngFor="let s of allStatuses" [value]="s">{{ s }}</option>
-                  </select>
+                  <div style="display:flex;gap:1px;color:#CBD5E1">
+                    <i class="fa-regular fa-star" style="font-size:0.625rem"></i>
+                    <i class="fa-regular fa-star" style="font-size:0.625rem"></i>
+                    <i class="fa-regular fa-star" style="font-size:0.625rem"></i>
+                    <i class="fa-regular fa-star" style="font-size:0.625rem"></i>
+                    <i class="fa-regular fa-star" style="font-size:0.625rem"></i>
+                  </div>
+                </td>
+                <td>
+                  <button style="background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;border-radius:4px" onmouseenter="this.style.background='#F1F5F9'" onmouseleave="this.style.background='none'">
+                    <i class="fa-solid fa-ellipsis-vertical" style="font-size:0.875rem"></i>
+                  </button>
                 </td>
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- ===== CARD VIEW ===== -->
+        <div *ngIf="!loading && pagedApps.length>0 && viewMode==='card'" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;padding:1rem">
+          <div *ngFor="let app of pagedApps" class="data-card">
+            <div style="display:flex;align-items:start;justify-content:space-between;margin-bottom:0.75rem">
+              <div style="display:flex;align-items:center;gap:0.5rem">
+                <div class="avatar" style="width:36px;height:36px;font-size:0.875rem">{{ app.candidateId?.name?.charAt(0)||'?' }}</div>
+                <div>
+                  <div style="font-weight:600;color:var(--text);font-size:0.875rem">{{ app.candidateId?.name||'Unknown' }}</div>
+                  <div style="font-size:0.6875rem;color:var(--muted)">{{ app.candidateId?.phone||app.candidateId?.email }}</div>
+                </div>
+              </div>
+              <span [class]="getStatusBadge(app.status)">{{ app.status }}</span>
+            </div>
+            <div style="padding:0.5rem;background:var(--bg);border-radius:6px;margin-bottom:0.625rem">
+              <div style="font-size:0.75rem;font-weight:600;color:var(--primary);margin-bottom:2px">{{ app.appId }}</div>
+              <div style="font-size:0.8125rem;color:var(--text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ app.jobId?.title||'N/A' }}</div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:0.75rem;color:var(--muted);margin-bottom:0.625rem">
+              <span><i class="fa-regular fa-calendar" style="margin-right:4px"></i>{{ app.appliedDate | date:'dd MMM yyyy' }}</span>
+              <span *ngIf="app.meetingStatus"><span [class]="getMeetingBadge(app.meetingStatus)">{{ app.meetingStatus }}</span></span>
+            </div>
+            <div *ngIf="app.candidateId?.aiScore" style="margin-bottom:0.625rem">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <span style="font-size:0.6875rem;color:var(--muted)">AI Score</span>
+                <span style="font-size:0.6875rem;font-weight:700" [style.color]="app.candidateId.aiScore>=80?'#16A34A':app.candidateId.aiScore>=60?'#D97706':'#DC2626'">{{ app.candidateId.aiScore }}%</span>
+              </div>
+              <div class="ai-score-bar"><div class="ai-score-fill" [style.width.%]="app.candidateId.aiScore" [style.background]="getScoreGrad(app.candidateId.aiScore)"></div></div>
+            </div>
+            <div style="display:flex;gap:0.375rem;padding-top:0.625rem;border-top:1px solid var(--border)">
+              <button (click)="moveStage(app, getNextStatus(app.status))" *ngIf="getNextStatus(app.status)" class="btn-primary btn-sm" style="flex:1;font-size:0.6875rem">
+                → {{ getNextStatus(app.status) }}
+              </button>
+              <button (click)="moveStage(app,'Rejected')" *ngIf="app.status!=='Rejected'" class="btn-danger btn-sm" style="font-size:0.6875rem">
+                Reject
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== KANBAN VIEW ===== -->
+        <div *ngIf="!loading && pagedApps.length>0 && viewMode==='kanban'" style="display:flex;gap:0.875rem;overflow-x:auto;padding:1rem">
+          <div *ngFor="let stage of stages" class="pipeline-stage" style="flex-shrink:0;width:210px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;padding:0 2px">
+              <span style="font-size:0.6875rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em">{{ stage.label }}</span>
+              <span class="badge badge-slate" style="font-size:0.6rem">{{ getByStage(stage.key).length }}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:0.5rem">
+              <div *ngFor="let app of getByStage(stage.key)" class="pipeline-card">
+                <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.375rem">
+                  <div class="avatar" style="width:26px;height:26px;font-size:0.6875rem">{{ app.candidateId?.name?.charAt(0)||'?' }}</div>
+                  <div style="flex:1;min-width:0">
+                    <p style="font-size:0.8125rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0">{{ app.candidateId?.name||'Candidate' }}</p>
+                  </div>
+                </div>
+                <p style="font-size:0.6875rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:0.375rem">{{ app.jobId?.title||'Job' }}</p>
+                <div *ngIf="app.candidateId?.aiScore">
+                  <div class="ai-score-bar" style="height:4px"><div class="ai-score-fill" style="height:100%" [style.width.%]="app.candidateId.aiScore" [style.background]="getScoreGrad(app.candidateId.aiScore)"></div></div>
+                  <span style="font-size:0.625rem;color:var(--muted)">AI: {{ app.candidateId.aiScore }}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== PAGINATION ===== -->
+        <div *ngIf="!loading && filteredApps.length>0" class="pagination-bar">
+          <span class="pagination-info">Showing {{ pageStart }}–{{ pageEnd }} of {{ filteredApps.length }} rows</span>
+          <div style="display:flex;align-items:center;gap:0.5rem">
+            <select class="page-size-select" [(ngModel)]="pageSize" (change)="onPageSizeChange()">
+              <option [value]="10">10 / page</option>
+              <option [value]="20">20 / page</option>
+              <option [value]="50">50 / page</option>
+            </select>
+          </div>
+          <div class="pagination-controls">
+            <button class="page-btn" (click)="goToPage(currentPage-1)" [disabled]="currentPage===1">
+              <i class="fa-solid fa-chevron-left" style="font-size:0.625rem"></i>&nbsp;Previous
+            </button>
+            <span style="font-size:0.8125rem;color:var(--muted);white-space:nowrap;padding:0 0.25rem">Page {{ currentPage }} of {{ totalPages }}</span>
+            <button class="page-btn" (click)="goToPage(currentPage+1)" [disabled]="currentPage===totalPages">
+              Next&nbsp;<i class="fa-solid fa-chevron-right" style="font-size:0.625rem"></i>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -131,29 +248,52 @@ import { CandidateService } from '../../services/candidate.service';
 export class ApplicationsComponent implements OnInit {
   applications: any[] = [];
   filteredApps: any[] = [];
+  pagedApps: any[] = [];
   jobs: any[] = [];
   loading = true;
   search = '';
   selectedJob = '';
-  viewMode: 'kanban' | 'list' = 'kanban';
+  statusFilter = '';
+  activeTab = 'all';
+  viewMode: 'list' | 'card' | 'kanban' = 'list';
 
-  allStatuses = ['Applied', 'Screening', 'Interview', 'Technical', 'HR Round', 'Offered', 'Hired', 'Rejected'];
+  // Pagination
+  pageSize = 10;
+  currentPage = 1;
+  get totalPages() { return Math.max(1, Math.ceil(this.filteredApps.length / this.pageSize)); }
+  get pageStart() { return this.filteredApps.length === 0 ? 0 : (this.currentPage - 1) * this.pageSize + 1; }
+  get pageEnd() { return Math.min(this.currentPage * this.pageSize, this.filteredApps.length); }
 
-  stages = [
-    { key: 'Applied', label: 'Applied', badgeClass: 'badge badge-slate' },
-    { key: 'Screening', label: 'Screening', badgeClass: 'badge badge-blue' },
-    { key: 'Interview', label: 'Interview', badgeClass: 'badge badge-purple' },
-    { key: 'Technical', label: 'Technical', badgeClass: 'badge badge-yellow' },
-    { key: 'HR Round', label: 'HR Round', badgeClass: 'badge badge-yellow' },
-    { key: 'Offered', label: 'Offered', badgeClass: 'badge badge-green' },
-    { key: 'Hired', label: 'Hired', badgeClass: 'badge badge-green' },
-    { key: 'Rejected', label: 'Rejected', badgeClass: 'badge badge-red' },
+  statCards = [
+    { label: 'Total Applications', value: 33, icon: 'fa-solid fa-file-lines',      iconBg: '#EEF6FF', iconColor: '#1976D2' },
+    { label: 'Reviewed',           value: 2,  icon: 'fa-solid fa-magnifying-glass', iconBg: '#F5F3FF', iconColor: '#7C3AED' },
+    { label: 'Interview Schedule', value: 4,  icon: 'fa-regular fa-calendar-check', iconBg: '#FFFBEB', iconColor: '#D97706' },
+    { label: 'Meeting',            value: 2,  icon: 'fa-solid fa-users',            iconBg: '#ECFDF5', iconColor: '#16A34A' },
+    { label: 'Offer Sent',         value: 1,  icon: 'fa-solid fa-envelope',         iconBg: '#EEF6FF', iconColor: '#1976D2' },
+    { label: 'Rejected',           value: 10, icon: 'fa-solid fa-circle-xmark',     iconBg: '#FEF2F2', iconColor: '#DC2626' },
   ];
 
-  constructor(
-    private appService: ApplicationService,
-    private jobService: JobService,
-  ) {}
+  statusTabs = [
+    { key: 'all',       label: 'All' },
+    { key: 'Applied',   label: 'New Application' },
+    { key: 'Reviewed',  label: 'Reviewed' },
+    { key: 'Scheduled', label: 'Scheduled' },
+    { key: 'Meeting',   label: 'Meeting' },
+    { key: 'Interview', label: 'Interviewed' },
+    { key: 'Selected',  label: 'Selected' },
+    { key: 'Rejected',  label: 'Rejected' },
+    { key: 'Offered',   label: 'Offer Sent' },
+    { key: 'Hired',     label: 'Completed' },
+  ];
+
+  allStatuses = ['Applied','Reviewed','Scheduled','Meeting','Interview','Selected','Offered','Hired','Rejected'];
+  stages = [
+    {key:'Applied',label:'Applied'},{key:'Reviewed',label:'Reviewed'},
+    {key:'Interview',label:'Interview'},{key:'Selected',label:'Selected'},
+    {key:'Offered',label:'Offered'},{key:'Hired',label:'Hired'},{key:'Rejected',label:'Rejected'},
+  ];
+
+  constructor(private appService: ApplicationService, private jobService: JobService) {}
 
   ngOnInit() {
     this.loadApplications();
@@ -162,53 +302,75 @@ export class ApplicationsComponent implements OnInit {
 
   loadApplications() {
     this.appService.getApplications().subscribe({
-      next: apps => { this.applications = apps; this.filteredApps = apps; this.loading = false; },
-      error: () => { this.applications = this.getMockApps(); this.filteredApps = this.applications; this.loading = false; }
+      next: apps => { this.applications = apps; this.applyFilter(); this.loading = false; },
+      error: () => { this.applications = this.getMockApps(); this.applyFilter(); this.loading = false; }
     });
   }
 
-  filterApps() {
+  setTab(key: string) { this.activeTab = key; this.currentPage = 1; this.applyFilter(); }
+
+  getTabCount(key: string) { return key === 'all' ? this.applications.length : this.applications.filter(a => a.status === key).length; }
+
+  applyFilter() {
     this.filteredApps = this.applications.filter(a => {
-      const matchS = !this.search || (a.candidateId?.name || '').toLowerCase().includes(this.search.toLowerCase());
-      const matchJ = !this.selectedJob || (a.jobId?._id || a.jobId) === this.selectedJob;
-      return matchS && matchJ;
+      const matchS   = !this.search       || (a.candidateId?.name||'').toLowerCase().includes(this.search.toLowerCase());
+      const matchJ   = !this.selectedJob  || (a.jobId?._id||a.jobId) === this.selectedJob;
+      const matchSt  = !this.statusFilter || a.status === this.statusFilter;
+      const matchTab = this.activeTab === 'all' || a.status === this.activeTab;
+      return matchS && matchJ && matchSt && matchTab;
     });
+    this.updatePage();
   }
 
-  getByStage(stage: string): any[] {
-    return this.filteredApps.filter(a => a.status === stage);
+  updatePage() {
+    const start = (this.currentPage - 1) * this.pageSize;
+    this.pagedApps = this.filteredApps.slice(start, start + this.pageSize);
   }
 
-  getNextStages(current: string): { key: string; label: string }[] {
+  goToPage(page: number) {
+    if (page < 1 || page > this.totalPages) return;
+    this.currentPage = page;
+    this.updatePage();
+  }
+
+  onPageSizeChange() { this.currentPage = 1; this.updatePage(); }
+
+  getByStage(stage: string) { return this.filteredApps.filter(a => a.status === stage); }
+
+  getNextStatus(current: string): string {
     const idx = this.allStatuses.indexOf(current);
-    const next = idx < this.allStatuses.length - 2 ? [{ key: this.allStatuses[idx + 1], label: '→ Move' }] : [];
-    return [...next, { key: 'Rejected', label: '✕ Reject' }];
+    return idx < this.allStatuses.length - 2 ? this.allStatuses[idx + 1] : '';
   }
 
   moveStage(app: any, status: string) {
+    if (!status) return;
     this.appService.updateStatus(app._id, status).subscribe({
-      next: () => { app.status = status; },
-      error: () => { app.status = status; } // Optimistic update
+      next: () => { app.status = status; this.applyFilter(); },
+      error: () => { app.status = status; this.applyFilter(); }
     });
   }
 
   getStatusBadge(s: string): string {
-    const m: any = { Applied: 'badge badge-slate', Screening: 'badge badge-blue', Interview: 'badge badge-purple', Technical: 'badge badge-yellow', 'HR Round': 'badge badge-yellow', Offered: 'badge badge-green', Hired: 'badge badge-green', Rejected: 'badge badge-red' };
+    const m: any = { Applied:'badge badge-applied', Reviewed:'badge badge-reviewed', Scheduled:'badge badge-scheduled', Meeting:'badge badge-meeting', Interview:'badge badge-interviewed', Selected:'badge badge-offered', Offered:'badge badge-offered', Hired:'badge badge-hired', Rejected:'badge badge-rejected' };
     return m[s] || 'badge badge-slate';
   }
-
-  getScoreColor(s: number): string { return s >= 80 ? 'text-emerald-400' : s >= 60 ? 'text-amber-400' : 'text-red-400'; }
-  getScoreGrad(s: number): string { return s >= 80 ? 'linear-gradient(90deg, #10b981, #34d399)' : s >= 60 ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'linear-gradient(90deg, #ef4444, #f87171)'; }
+  getMeetingBadge(s: string): string {
+    const m: any = { Pending:'badge badge-pending', Completed:'badge badge-completed', Scheduled:'badge badge-scheduled' };
+    return m[s] || 'badge badge-slate';
+  }
+  getScoreGrad(s: number): string { return s>=80?'linear-gradient(90deg,#16a34a,#4ade80)':s>=60?'linear-gradient(90deg,#d97706,#fbbf24)':'linear-gradient(90deg,#dc2626,#f87171)'; }
 
   getMockApps() {
     return [
-      { _id: '1', candidateId: { name: 'Alex Johnson', email: 'alex@ex.com', aiScore: 94 }, jobId: { title: 'Senior Frontend Developer' }, status: 'Interview', appliedDate: new Date(Date.now() - 86400000 * 5) },
-      { _id: '2', candidateId: { name: 'Maria Garcia', email: 'maria@ex.com', aiScore: 88 }, jobId: { title: 'Full Stack Engineer' }, status: 'Screening', appliedDate: new Date(Date.now() - 86400000 * 3) },
-      { _id: '3', candidateId: { name: 'James Wilson', email: 'james@ex.com', aiScore: 91 }, jobId: { title: 'AI/ML Engineer' }, status: 'Applied', appliedDate: new Date(Date.now() - 86400000) },
-      { _id: '4', candidateId: { name: 'Sophie Chen', email: 'sophie@ex.com', aiScore: 72 }, jobId: { title: 'Product Designer' }, status: 'Offered', appliedDate: new Date(Date.now() - 86400000 * 10) },
-      { _id: '5', candidateId: { name: 'David Kim', email: 'david@ex.com', aiScore: 85 }, jobId: { title: 'DevOps Engineer' }, status: 'Technical', appliedDate: new Date(Date.now() - 86400000 * 7) },
-      { _id: '6', candidateId: { name: 'Emma Brown', email: 'emma@ex.com', aiScore: 89 }, jobId: { title: 'Full Stack Engineer' }, status: 'Hired', appliedDate: new Date(Date.now() - 86400000 * 20) },
-      { _id: '7', candidateId: { name: 'Noah Davis', email: 'noah@ex.com', aiScore: 45 }, jobId: { title: 'Senior Frontend Developer' }, status: 'Rejected', appliedDate: new Date(Date.now() - 86400000 * 4) },
+      { _id:'1', appId:'PL751065', candidateId:{name:'Jane Smith',   phone:'+91 9123456789', aiScore:88}, jobId:{title:'Hardware Mobile Repair Technician'},                      status:'Meeting',   appliedDate:new Date('2026-06-05'), meetingStatus:null },
+      { _id:'2', appId:'PL126097', candidateId:{name:'John Doe',     phone:'+91 9876543210', aiScore:72}, jobId:{title:'Hardware Mobile Repair Technician'},                      status:'Reviewed',  appliedDate:new Date('2026-06-05'), meetingStatus:null },
+      { _id:'3', appId:'PL594577', candidateId:{name:'Pradip Das',   phone:'+91 9733021139', aiScore:65}, jobId:{title:'Customer Support Executive (WFH)'},                      status:'Meeting',   appliedDate:new Date('2026-06-05'), meetingStatus:'Pending' },
+      { _id:'4', appId:'PL204658', candidateId:{name:'Samir Roy',    phone:'4545455555',     aiScore:91}, jobId:{title:'Receptionist (Front Desk)'},                             status:'Interview', appliedDate:new Date('2026-05-23'), meetingStatus:'Completed' },
+      { _id:'5', appId:'PL882453', candidateId:{name:'Amit Kumar',   phone:'9641445782',     aiScore:85}, jobId:{title:'Receptionist (Front Desk)'},                             status:'Interview', appliedDate:new Date('2026-05-23'), meetingStatus:'Completed' },
+      { _id:'6', appId:'PL972082', candidateId:{name:'Pavel Jana',   phone:'+91 9002684111', aiScore:55}, jobId:{title:'Receptionist (Front Desk)'},                             status:'Applied',   appliedDate:new Date('2026-05-23'), meetingStatus:null },
+      { _id:'7', appId:'PL330124', candidateId:{name:'Amit Patra',   phone:'+91 9876001234', aiScore:78}, jobId:{title:'Hardware Mobile Repair Technician'},                     status:'Selected',  appliedDate:new Date('2026-05-20'), meetingStatus:'Completed' },
+      { _id:'8', appId:'PL441200', candidateId:{name:'Rina Mondal',  phone:'+91 9123400000', aiScore:40}, jobId:{title:'Customer Support Executive'},                            status:'Rejected',  appliedDate:new Date('2026-05-18'), meetingStatus:null },
+      { _id:'9', appId:'PL553319', candidateId:{name:'Riya Sen',     phone:'+91 9012345678', aiScore:80}, jobId:{title:'Senior Frontend Developer'},                             status:'Offered',   appliedDate:new Date('2026-05-10'), meetingStatus:'Completed' },
     ];
   }
 }

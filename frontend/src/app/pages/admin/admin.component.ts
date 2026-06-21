@@ -8,170 +8,267 @@ import { FormsModule } from '@angular/forms';
   standalone: true,
   imports: [CommonModule, RouterModule, FormsModule],
   template: `
-    <div class="space-y-6 animate-fade-in">
+    <div class="animate-fade-in">
       <div class="page-header">
         <div>
-          <h1 class="page-title">Admin Panel <span class="badge badge-red ml-2">Super Admin</span></h1>
+          <h1 class="page-title">Admin Panel <span class="badge badge-red" style="vertical-align:middle;margin-left:6px">Super Admin</span></h1>
           <p class="page-subtitle">Platform management and configuration</p>
         </div>
       </div>
 
-      <!-- Admin Tabs -->
-      <div class="flex gap-2 bg-dark-800/50 p-1 rounded-xl border border-slate-700/50 w-fit">
-        <button *ngFor="let tab of tabs" (click)="activeTab = tab.id"
-                [class]="activeTab === tab.id ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'"
-                class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200">
-          {{ tab.label }}
-        </button>
-      </div>
+      <!-- Main card with tabs inside — same pattern as reference image -->
+      <div class="card" style="padding:0;overflow:hidden">
 
-      <!-- Users Tab -->
-      <div *ngIf="activeTab === 'users'" class="card p-0">
-        <div class="flex items-center justify-between p-6 border-b border-slate-700/50">
-          <h3 class="font-semibold text-white">Platform Users</h3>
-          <span class="badge badge-blue">{{ users.length }} total</span>
+        <!-- Tab Bar — matches reference: Skills | Job Category | Status | Templates | Questions -->
+        <div style="display:flex;border-bottom:1px solid var(--border);padding:0 1rem;overflow-x:auto" class="no-scrollbar">
+          <button *ngFor="let tab of tabs" (click)="activeTab=tab.id"
+            style="display:flex;align-items:center;gap:0.375rem;padding:0.75rem 1rem;font-size:0.8125rem;font-weight:600;border:none;background:none;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;transition:all 0.15s;margin-bottom:-1px"
+            [style.color]="activeTab===tab.id?'var(--primary)':'var(--muted)'"
+            [style.border-bottom-color]="activeTab===tab.id?'var(--primary)':'transparent'">
+            <i [class]="tab.icon" style="font-size:0.75rem"></i>{{ tab.label }}
+            <span *ngIf="tab.count" class="badge badge-slate" style="font-size:0.6rem;padding:1px 5px">{{ tab.count }}</span>
+          </button>
         </div>
-        <div class="table-container">
-          <table class="table">
-            <thead><tr><th>User</th><th>Role</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
-            <tbody>
-              <tr *ngFor="let u of users">
-                <td>
-                  <div class="flex items-center gap-2">
-                    <div class="avatar w-8 h-8 text-xs flex items-center justify-center">{{ u.name.charAt(0) }}</div>
-                    <div>
-                      <p class="text-sm font-medium text-white">{{ u.name }}</p>
-                      <p class="text-xs text-slate-500">{{ u.email }}</p>
+
+        <!-- ======== USERS TAB ======== -->
+        <div *ngIf="activeTab==='users'">
+          <!-- Filter Bar -->
+          <div class="filter-bar">
+            <div class="search-wrap" style="flex:1;min-width:200px;max-width:320px">
+              <svg class="search-icon-inner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input type="text" [(ngModel)]="userSearch" placeholder="Search users...">
+            </div>
+            <select [(ngModel)]="roleFilter" class="form-select" style="width:auto;min-width:120px">
+              <option value="">All Roles</option>
+              <option value="Super Admin">Super Admin</option>
+              <option value="HR Manager">HR Manager</option>
+              <option value="Interviewer">Interviewer</option>
+              <option value="Candidate">Candidate</option>
+            </select>
+            <div style="margin-left:auto">
+              <button class="btn-primary">
+                <i class="fa-solid fa-plus" style="font-size:0.75rem"></i> Add User
+              </button>
+            </div>
+          </div>
+
+          <!-- Table — exactly like reference image -->
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th style="width:36px"><input type="checkbox" style="width:14px;height:14px;accent-color:var(--primary)"></th>
+                  <th>User</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th style="text-align:center">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let u of filteredUsers">
+                  <td><input type="checkbox" style="width:14px;height:14px;accent-color:var(--primary)"></td>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:0.5rem">
+                      <div class="avatar" style="width:28px;height:28px;font-size:0.6875rem;flex-shrink:0">{{ u.name.charAt(0) }}</div>
+                      <div>
+                        <div style="font-size:0.8125rem;font-weight:600;color:var(--text)">{{ u.name }}</div>
+                        <div style="font-size:0.6875rem;color:var(--muted)">{{ u.email }}</div>
+                      </div>
                     </div>
-                  </div>
-                </td>
-                <td><span [class]="getRoleBadge(u.role)">{{ u.role }}</span></td>
-                <td><span [class]="u.isActive ? 'badge badge-green' : 'badge badge-red'">{{ u.isActive ? 'Active' : 'Inactive' }}</span></td>
-                <td class="text-sm text-slate-400">{{ u.createdAt | date:'mediumDate' }}</td>
-                <td>
-                  <div class="flex gap-1">
-                    <button (click)="toggleUser(u)" class="btn-sm" [class]="u.isActive ? 'btn-danger' : 'btn-success'">{{ u.isActive ? 'Deactivate' : 'Activate' }}</button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+                  </td>
+                  <td><span [class]="getRoleBadge(u.role)">{{ u.role }}</span></td>
+                  <td><span [class]="u.isActive?'badge badge-green':'badge badge-red'">{{ u.isActive?'Active':'Inactive' }}</span></td>
+                  <td style="font-size:0.75rem;color:var(--muted)">{{ u.createdAt | date:'dd MMM yyyy' }}</td>
+                  <td>
+                    <div style="display:flex;align-items:center;justify-content:center;gap:4px">
+                      <button class="btn-icon btn-icon-primary" title="Edit User"><i class="fa-regular fa-pen-to-square"></i></button>
+                      <button (click)="toggleUser(u)" class="btn-icon" [class]="u.isActive?'btn-icon-danger':'btn-icon-success'"
+                              [title]="u.isActive?'Deactivate':'Activate'">
+                        <i [class]="u.isActive?'fa-solid fa-ban':'fa-solid fa-check'" style="font-size:0.6875rem"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-      <!-- Companies Tab -->
-      <div *ngIf="activeTab === 'companies'" class="card">
-        <h3 class="font-semibold text-white mb-4">Companies</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div *ngFor="let c of companies" class="p-4 bg-slate-800/40 rounded-xl border border-slate-700/50 flex items-start gap-3">
-            <div class="w-12 h-12 bg-primary-600/10 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">🏢</div>
-            <div class="flex-1">
-              <h4 class="font-semibold text-white">{{ c.name }}</h4>
-              <p class="text-sm text-slate-400">{{ c.website }}</p>
-              <div class="flex gap-2 mt-2">
-                <span [class]="getPlanBadge(c.plan)">{{ c.plan }}</span>
-                <span class="badge badge-slate">{{ c.users }} users</span>
+          <!-- Pagination -->
+          <div class="pagination-bar">
+            <span class="pagination-info">Showing 1–{{ filteredUsers.length }} of {{ users.length }} rows</span>
+            <select class="page-size-select"><option>10 / page</option><option>20 / page</option></select>
+            <div class="pagination-controls">
+              <button class="page-btn" disabled><i class="fa-solid fa-chevron-left" style="font-size:0.6rem"></i>&nbsp;Previous</button>
+              <span style="font-size:0.8125rem;color:var(--muted);padding:0 0.25rem">Page 1 of 1</span>
+              <button class="page-btn" disabled>Next&nbsp;<i class="fa-solid fa-chevron-right" style="font-size:0.6rem"></i></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ======== COMPANIES TAB ======== -->
+        <div *ngIf="activeTab==='companies'">
+          <div class="filter-bar">
+            <div class="search-wrap" style="flex:1;min-width:200px;max-width:320px">
+              <svg class="search-icon-inner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input type="text" placeholder="Search companies...">
+            </div>
+            <div style="margin-left:auto">
+              <button class="btn-primary"><i class="fa-solid fa-plus" style="font-size:0.75rem"></i> Add Company</button>
+            </div>
+          </div>
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th style="width:36px"><input type="checkbox" style="width:14px;height:14px;accent-color:var(--primary)"></th>
+                  <th>Company</th>
+                  <th>Website</th>
+                  <th>Plan</th>
+                  <th style="text-align:center">Users</th>
+                  <th style="text-align:center">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let c of companies">
+                  <td><input type="checkbox" style="width:14px;height:14px;accent-color:var(--primary)"></td>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:0.5rem">
+                      <div style="width:28px;height:28px;background:var(--primary-l);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:0.875rem;flex-shrink:0">🏢</div>
+                      <span style="font-size:0.8125rem;font-weight:600;color:var(--text)">{{ c.name }}</span>
+                    </div>
+                  </td>
+                  <td style="font-size:0.75rem;color:var(--primary)">{{ c.website }}</td>
+                  <td><span [class]="getPlanBadge(c.plan)">{{ c.plan }}</span></td>
+                  <td style="font-size:0.8125rem;color:var(--text);text-align:center">{{ c.users }}</td>
+                  <td>
+                    <div style="display:flex;align-items:center;justify-content:center;gap:4px">
+                      <button class="btn-icon btn-icon-primary" title="Edit"><i class="fa-regular fa-pen-to-square"></i></button>
+                      <button class="btn-icon btn-icon-danger" title="Delete"><i class="fa-regular fa-trash-can"></i></button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ======== SUBSCRIPTIONS TAB ======== -->
+        <div *ngIf="activeTab==='subscriptions'" style="padding:1.25rem">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem">
+            <div *ngFor="let plan of plans" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;position:relative" [style.border-color]="plan.highlighted?'var(--primary)':'var(--border)'">
+              <div *ngIf="plan.highlighted" class="badge badge-purple" style="position:absolute;top:0.75rem;right:0.75rem">Popular</div>
+              <div [style.background]="plan.highlighted?'var(--primary-l)':'var(--bg)'" style="padding:1rem;border-bottom:1px solid var(--border)">
+                <div style="font-size:1rem;font-weight:800;color:var(--text);margin-bottom:2px">{{ plan.name }}</div>
+                <div style="font-size:1.75rem;font-weight:900" [style.color]="plan.highlighted?'var(--primary)':'var(--text)'">{{ getPlanPrice(plan) }}<span style="font-size:0.75rem;font-weight:400;color:var(--muted)">/mo</span></div>
+              </div>
+              <div style="padding:1rem">
+                <ul style="list-style:none;margin:0 0 1rem 0;padding:0;display:flex;flex-direction:column;gap:0.5rem">
+                  <li *ngFor="let f of plan.features" style="display:flex;align-items:center;gap:0.5rem;font-size:0.8125rem;color:var(--text)">
+                    <i class="fa-solid fa-check" style="color:#16A34A;font-size:0.6875rem;flex-shrink:0"></i> {{ f }}
+                  </li>
+                </ul>
+                <button [class]="plan.highlighted?'btn-primary':'btn-secondary'" style="width:100%;justify-content:center">Manage Plan</button>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Subscriptions Tab -->
-      <div *ngIf="activeTab === 'subscriptions'" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div *ngFor="let plan of plans" class="card relative overflow-hidden" [class]="plan.highlighted ? 'border-primary-500/50' : ''">
-          <div *ngIf="plan.highlighted" class="absolute top-3 right-3 badge badge-purple">Popular</div>
-          <h3 class="text-lg font-bold text-white mb-1">{{ plan.name }}</h3>
-          <div class="text-3xl font-black mb-4" [class]="plan.highlighted ? 'text-gradient' : 'text-white'">{{ getPlanPrice(plan) }}<span class="text-sm font-normal text-slate-400">/mo</span></div>
-          <ul class="space-y-2 mb-6">
-            <li *ngFor="let feature of plan.features" class="flex items-center gap-2 text-sm text-slate-300">
-              <svg class="w-4 h-4 text-emerald-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-              {{ feature }}
-            </li>
-          </ul>
-          <button [class]="plan.highlighted ? 'btn-primary w-full' : 'btn-secondary w-full'">Manage Plan</button>
+        <!-- ======== AI SETTINGS TAB ======== -->
+        <div *ngIf="activeTab==='ai-settings'" style="padding:1.25rem;max-width:600px">
+          <div style="display:flex;flex-direction:column;gap:1rem">
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">OpenAI API Key</label>
+              <input type="password" [(ngModel)]="aiConfig.openaiKey" class="form-input" placeholder="sk-...">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Gemini API Key</label>
+              <input type="password" [(ngModel)]="aiConfig.geminiKey" class="form-input" placeholder="AIza...">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">AI Model</label>
+              <select [(ngModel)]="aiConfig.model" class="form-select">
+                <option value="gpt-4o-mini">GPT-4o Mini (Fast & Economical)</option>
+                <option value="gpt-4o">GPT-4o (Best Quality)</option>
+                <option value="gemini-pro">Gemini Pro</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label" style="display:flex;align-items:center;justify-content:space-between">
+                <span>Min. AI Match Score for Auto-Shortlist</span>
+                <span style="font-weight:700;color:var(--primary)">{{ aiConfig.minScore }}%</span>
+              </label>
+              <input type="range" [(ngModel)]="aiConfig.minScore" min="50" max="95" step="5" style="width:100%;accent-color:var(--primary)">
+              <div style="display:flex;justify-content:space-between;font-size:0.6875rem;color:var(--muted);margin-top:4px"><span>50%</span><span>95%</span></div>
+            </div>
+            <div>
+              <button (click)="saveAiConfig()" class="btn-primary">
+                <i class="fa-solid fa-floppy-disk" style="font-size:0.75rem"></i> Save Settings
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <!-- AI Settings Tab -->
-      <div *ngIf="activeTab === 'ai-settings'" class="card">
-        <h3 class="font-semibold text-white mb-4">AI Configuration</h3>
-        <div class="space-y-4">
-          <div class="form-group">
-            <label class="form-label">OpenAI API Key</label>
-            <input id="openai-key" type="password" [(ngModel)]="aiConfig.openaiKey" class="form-input" placeholder="sk-...">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Gemini API Key</label>
-            <input id="gemini-key" type="password" [(ngModel)]="aiConfig.geminiKey" class="form-input" placeholder="AIza...">
-          </div>
-          <div class="form-group">
-            <label class="form-label">AI Model</label>
-            <select [(ngModel)]="aiConfig.model" class="form-select">
-              <option value="gpt-4o-mini">GPT-4o Mini (Fast & Economical)</option>
-              <option value="gpt-4o">GPT-4o (Best Quality)</option>
-              <option value="gemini-pro">Gemini Pro</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Minimum AI Match Score for Auto-Shortlist (%)</label>
-            <input type="range" [(ngModel)]="aiConfig.minScore" min="50" max="95" step="5" class="w-full accent-primary-500">
-            <div class="flex justify-between text-xs text-slate-500 mt-1"><span>50%</span><span class="font-bold text-primary-400">{{ aiConfig.minScore }}%</span><span>95%</span></div>
-          </div>
-          <button (click)="saveAiConfig()" class="btn-primary">Save AI Settings</button>
-        </div>
       </div>
     </div>
   `
 })
 export class AdminComponent implements OnInit {
   activeTab = 'users';
+  userSearch = '';
+  roleFilter = '';
+
   tabs = [
-    { id: 'users', label: '👥 Users' },
-    { id: 'companies', label: '🏢 Companies' },
-    { id: 'subscriptions', label: '💳 Subscriptions' },
-    { id: 'ai-settings', label: '🤖 AI Settings' },
+    { id:'users',         label:'Users',         icon:'fa-solid fa-users',          count:6 },
+    { id:'companies',     label:'Companies',      icon:'fa-solid fa-building',        count:4 },
+    { id:'subscriptions', label:'Subscriptions',  icon:'fa-solid fa-credit-card',     count:null },
+    { id:'ai-settings',   label:'AI Settings',    icon:'fa-solid fa-robot',           count:null },
   ];
 
   users = [
-    { name: 'Admin User', email: 'admin@hireflow.ai', role: 'Super Admin', isActive: true, createdAt: new Date('2024-01-01') },
-    { name: 'Sarah Mitchell', email: 'sarah@company.com', role: 'HR Manager', isActive: true, createdAt: new Date('2024-02-15') },
-    { name: 'John Patel', email: 'john@company.com', role: 'HR Manager', isActive: true, createdAt: new Date('2024-03-01') },
-    { name: 'Alex Johnson', email: 'alex@example.com', role: 'Candidate', isActive: true, createdAt: new Date('2024-04-10') },
-    { name: 'Maria Garcia', email: 'maria@example.com', role: 'Candidate', isActive: false, createdAt: new Date('2024-04-20') },
-    { name: 'David Kim', email: 'david@company.com', role: 'Interviewer', isActive: true, createdAt: new Date('2024-05-01') },
+    { name:'Admin User',    email:'admin@hireflow.ai',   role:'Super Admin', isActive:true,  createdAt:new Date('2024-01-01') },
+    { name:'Sarah Mitchell',email:'sarah@company.com',   role:'HR Manager',  isActive:true,  createdAt:new Date('2024-02-15') },
+    { name:'John Patel',    email:'john@company.com',    role:'HR Manager',  isActive:true,  createdAt:new Date('2024-03-01') },
+    { name:'Alex Johnson',  email:'alex@example.com',    role:'Candidate',   isActive:true,  createdAt:new Date('2024-04-10') },
+    { name:'Maria Garcia',  email:'maria@example.com',   role:'Candidate',   isActive:false, createdAt:new Date('2024-04-20') },
+    { name:'David Kim',     email:'david@company.com',   role:'Interviewer', isActive:true,  createdAt:new Date('2024-05-01') },
   ];
 
+  get filteredUsers() {
+    return this.users.filter(u => {
+      const matchS = !this.userSearch || u.name.toLowerCase().includes(this.userSearch.toLowerCase()) || u.email.toLowerCase().includes(this.userSearch.toLowerCase());
+      const matchR = !this.roleFilter || u.role === this.roleFilter;
+      return matchS && matchR;
+    });
+  }
+
   companies = [
-    { name: 'TechCorp Inc.', website: 'techcorp.com', plan: 'Enterprise', users: 25 },
-    { name: 'StartupXYZ', website: 'startupxyz.io', plan: 'Pro', users: 8 },
-    { name: 'Acme Corp', website: 'acme.com', plan: 'Free', users: 3 },
-    { name: 'Innovation Labs', website: 'innovationlabs.ai', plan: 'Enterprise', users: 42 },
+    { name:'TechCorp Inc.',    website:'techcorp.com',       plan:'Enterprise', users:25 },
+    { name:'StartupXYZ',       website:'startupxyz.io',      plan:'Pro',        users:8  },
+    { name:'Acme Corp',        website:'acme.com',           plan:'Free',       users:3  },
+    { name:'Innovation Labs',  website:'innovationlabs.ai',  plan:'Enterprise', users:42 },
   ];
 
   plans = [
-    { name: 'Free', price: 0, highlighted: false, features: ['5 active jobs', '50 candidates', 'Basic AI scoring', 'Email notifications'] },
-    { name: 'Pro', price: 99, highlighted: true, features: ['Unlimited jobs', '500 candidates', 'Full AI engine', 'Resume parsing', 'Analytics dashboard', 'Priority support'] },
-    { name: 'Enterprise', price: 299, highlighted: false, features: ['Unlimited everything', 'Custom AI models', 'API access', 'SSO/SAML', 'Dedicated support', 'Custom integrations'] },
+    { name:'Free',       price:0,   features:['1 Active Job','Up to 50 Candidates','Basic Email Support'],                                                highlighted:false },
+    { name:'Pro',        price:49,  features:['10 Active Jobs','Unlimited Candidates','AI Resume Parsing','Priority Support'],                             highlighted:true  },
+    { name:'Enterprise', price:199, features:['Unlimited Jobs','AI Candidate Ranking','Custom Workflows','Dedicated Account Manager'],                     highlighted:false },
   ];
 
-  aiConfig = { openaiKey: '', geminiKey: '', model: 'gpt-4o-mini', minScore: 70 };
+  aiConfig = { openaiKey:'sk-xxxxxxxxxxxxxxxxxxxx', geminiKey:'', model:'gpt-4o-mini', minScore:75 };
 
+  constructor() {}
   ngOnInit() {}
 
-  toggleUser(u: any) { u.isActive = !u.isActive; }
-
-  getPlanPrice(plan: any): string { return plan.price === 0 ? 'Free' : '$' + plan.price; }
-
   getRoleBadge(role: string): string {
-    const m: any = { 'Super Admin': 'badge badge-red', 'HR Manager': 'badge badge-purple', 'Interviewer': 'badge badge-blue', 'Candidate': 'badge badge-slate' };
-    return m[role] || 'badge badge-slate';
+    const m: any = { 'Super Admin':'badge badge-red','HR Manager':'badge badge-purple','Interviewer':'badge badge-blue','Candidate':'badge badge-slate' };
+    return m[role]||'badge badge-slate';
   }
-
   getPlanBadge(plan: string): string {
-    const m: any = { Enterprise: 'badge badge-purple', Pro: 'badge badge-blue', Free: 'badge badge-slate' };
-    return m[plan] || 'badge badge-slate';
+    const m: any = { 'Enterprise':'badge badge-purple','Pro':'badge badge-blue','Free':'badge badge-slate' };
+    return m[plan]||'badge badge-slate';
   }
-
-  saveAiConfig() { alert('AI settings saved successfully!'); }
+  getPlanPrice(plan: any): string { return plan.price===0?'Free':'$'+plan.price; }
+  toggleUser(u: any) { u.isActive=!u.isActive; }
+  saveAiConfig() { alert('AI Configuration saved!'); }
 }

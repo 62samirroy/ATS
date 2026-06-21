@@ -7,30 +7,18 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: {
-          50: '#eef2ff',
-          100: '#e0e7ff',
-          200: '#c7d2fe',
-          300: '#a5b4fc',
-          400: '#818cf8',
-          500: '#6366f1',
-          600: '#4f46e5',
-          700: '#4338ca',
-          800: '#3730a3',
-          900: '#312e81',
-        },
-        accent: {
-          50: '#f0fdf4',
-          400: '#4ade80',
-          500: '#22c55e',
-          600: '#16a34a',
-        },
-        dark: {
-          50: '#f8fafc',
-          800: '#1e293b',
-          850: '#172033',
-          900: '#0f172a',
-          950: '#080f1e',
+        brand: {
+          bg: '#F4F6F9',
+          surface: '#FFFFFF',
+          secondary: '#E9ECEF',
+          text: '#1A2B4C',
+          muted: '#6C757D',
+          border: '#DEE2E6',
+          nav: '#1A2B4C',
+          primary: '#0A58CA',
+          hover: '#084298',
+          success: '#198754',
+          danger: '#DC3545',
         }
       },
       fontFamily: {

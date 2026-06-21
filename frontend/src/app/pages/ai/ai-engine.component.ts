@@ -8,206 +8,196 @@ import { AiService } from '../../services/ai.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="space-y-6 animate-fade-in">
+    <div class="animate-fade-in">
+
+      <!-- Page Header -->
       <div class="page-header">
         <div>
-          <h1 class="page-title">AI Engine <span class="text-gradient">✨</span></h1>
-          <p class="page-subtitle">Powered by OpenAI GPT — Resume parsing, candidate ranking, interview question generation</p>
+          <h1 class="page-title">AI Engine</h1>
+          <p class="page-subtitle">Powered by OpenAI GPT — Resume parsing, candidate ranking, question generation</p>
         </div>
       </div>
 
-      <!-- Tabs -->
-      <div class="flex gap-2 bg-dark-800/50 p-1 rounded-xl border border-slate-700/50 w-fit">
-        <button *ngFor="let tab of tabs" (click)="activeTab = tab.id" id="ai-tab-{{ tab.id }}"
-                [class]="activeTab === tab.id ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'"
-                class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200">
-          {{ tab.label }}
-        </button>
-      </div>
+      <!-- Tabs (same pattern as Admin, Applications) -->
+      <div class="card" style="padding:0;overflow:hidden;margin-bottom:0">
 
-      <!-- Resume Parser Tab -->
-      <div *ngIf="activeTab === 'parser'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="card">
-          <h3 class="font-semibold text-white mb-4">📄 Resume Parser</h3>
-          <p class="text-sm text-slate-400 mb-4">Paste resume text below. AI will extract structured data.</p>
-          <textarea id="resume-input" [(ngModel)]="resumeText" class="form-textarea h-64 text-xs font-mono"
-            placeholder="Paste resume content here...&#10;&#10;Example:&#10;John Doe&#10;john@example.com | +1-555-0123&#10;&#10;Experience:&#10;Senior Developer at TechCorp (2021-2024)&#10;..."></textarea>
-          <button (click)="parseResume()" id="btn-parse" class="btn-primary mt-4 w-full" [disabled]="parsing || !resumeText">
-            <span *ngIf="!parsing">🔍 Parse Resume</span>
-            <span *ngIf="parsing" class="flex items-center gap-2 justify-center">
-              <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-              Parsing with AI...
-            </span>
+        <!-- Tab Bar -->
+        <div class="status-tabs" style="padding:0 1rem;gap:0">
+          <button *ngFor="let tab of tabs" (click)="activeTab=tab.id"
+                  class="status-tab" [class.active]="activeTab===tab.id" style="border-radius:0;border-bottom:2px solid transparent"
+                  [style.border-bottom-color]="activeTab===tab.id?'var(--primary)':'transparent'">
+            <i [class]="tab.icon" style="margin-right:0.375rem;font-size:0.75rem"></i>{{ tab.label }}
           </button>
         </div>
 
-        <div class="card">
-          <h3 class="font-semibold text-white mb-4">✅ Extracted Data</h3>
-          <div *ngIf="!parsedData" class="flex flex-col items-center justify-center h-48 text-slate-500">
-            <svg class="w-12 h-12 mb-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-            <p class="text-sm">Paste resume and click Parse</p>
+        <!-- ======= RESUME PARSER ======= -->
+        <div *ngIf="activeTab==='parser'" style="padding:1.25rem;display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">
+
+          <!-- Input Panel -->
+          <div>
+            <div style="font-size:0.875rem;font-weight:600;color:var(--text);margin-bottom:0.75rem">
+              <i class="fa-solid fa-file-lines" style="color:var(--primary);margin-right:0.375rem"></i> Resume Input
+            </div>
+            <label for="resume-file-upload" class="btn-secondary" style="width:100%;justify-content:center;cursor:pointer;margin-bottom:0.75rem">
+              <i class="fa-solid fa-cloud-arrow-up" style="color:var(--primary)"></i> Upload PDF / Word
+            </label>
+            <input type="file" id="resume-file-upload" style="display:none" accept=".pdf,.doc,.docx" (change)="onFileSelected($event)">
+
+            <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem">
+              <div style="flex:1;height:1px;background:var(--border)"></div>
+              <span style="font-size:0.6875rem;color:var(--muted);font-weight:600">OR PASTE TEXT</span>
+              <div style="flex:1;height:1px;background:var(--border)"></div>
+            </div>
+
+            <textarea [(ngModel)]="resumeText" class="form-textarea"
+              style="height:160px;font-size:0.75rem;font-family:monospace;resize:vertical"
+              placeholder="Paste resume text here...&#10;&#10;John Doe&#10;john@example.com | +1-555-0123&#10;&#10;Experience:&#10;Senior Developer at TechCorp (2021-2024)..."></textarea>
+
+            <button (click)="parseResume()" class="btn-primary"
+              style="width:100%;justify-content:center;margin-top:0.75rem" [disabled]="parsing||!resumeText">
+              <i *ngIf="!parsing" class="fa-solid fa-magnifying-glass"></i>
+              <i *ngIf="parsing" class="fa-solid fa-spinner fa-spin"></i>
+              {{ parsing ? 'Parsing with AI...' : 'Parse Resume' }}
+            </button>
           </div>
-          <div *ngIf="parsedData" class="space-y-3">
-            <div class="grid grid-cols-2 gap-3">
-              <div class="p-3 bg-slate-800/50 rounded-xl">
-                <p class="text-xs text-slate-500 mb-1">Name</p>
-                <p class="text-sm font-semibold text-white">{{ parsedData.name || '—' }}</p>
-              </div>
-              <div class="p-3 bg-slate-800/50 rounded-xl">
-                <p class="text-xs text-slate-500 mb-1">Experience</p>
-                <p class="text-sm font-semibold text-white">{{ parsedData.experience || 0 }} years</p>
-              </div>
-              <div class="p-3 bg-slate-800/50 rounded-xl">
-                <p class="text-xs text-slate-500 mb-1">Email</p>
-                <p class="text-xs text-white truncate">{{ parsedData.email || '—' }}</p>
-              </div>
-              <div class="p-3 bg-slate-800/50 rounded-xl">
-                <p class="text-xs text-slate-500 mb-1">Phone</p>
-                <p class="text-xs text-white">{{ parsedData.phone || '—' }}</p>
-              </div>
+
+          <!-- Output Panel -->
+          <div>
+            <div style="font-size:0.875rem;font-weight:600;color:var(--text);margin-bottom:0.75rem">
+              <i class="fa-solid fa-circle-check" style="color:var(--success);margin-right:0.375rem"></i> Extracted Data
             </div>
-            <div *ngIf="parsedData.skills?.length" class="p-3 bg-slate-800/50 rounded-xl">
-              <p class="text-xs text-slate-500 mb-2">Skills</p>
-              <div class="flex flex-wrap gap-1.5">
-                <span *ngFor="let s of parsedData.skills" class="badge badge-purple">{{ s }}</span>
+
+            <div *ngIf="!parsedData" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:240px;border:2px dashed var(--border);border-radius:8px;color:var(--muted)">
+              <i class="fa-solid fa-file-invoice" style="font-size:2rem;color:var(--border);margin-bottom:0.75rem"></i>
+              <p style="font-size:0.8125rem">Paste resume and click Parse</p>
+            </div>
+
+            <div *ngIf="parsedData">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.625rem;margin-bottom:0.625rem">
+                <div style="padding:0.625rem 0.75rem;background:var(--bg);border:1px solid var(--border);border-radius:6px">
+                  <div style="font-size:0.6rem;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:2px">Name</div>
+                  <div style="font-size:0.8125rem;font-weight:600;color:var(--text)">{{ parsedData.name||'—' }}</div>
+                </div>
+                <div style="padding:0.625rem 0.75rem;background:var(--bg);border:1px solid var(--border);border-radius:6px">
+                  <div style="font-size:0.6rem;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:2px">Experience</div>
+                  <div style="font-size:0.8125rem;font-weight:600;color:var(--text)">{{ parsedData.experience||0 }} years</div>
+                </div>
+                <div style="padding:0.625rem 0.75rem;background:var(--bg);border:1px solid var(--border);border-radius:6px">
+                  <div style="font-size:0.6rem;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:2px">Email</div>
+                  <div style="font-size:0.75rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ parsedData.email||'—' }}</div>
+                </div>
+                <div style="padding:0.625rem 0.75rem;background:var(--bg);border:1px solid var(--border);border-radius:6px">
+                  <div style="font-size:0.6rem;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:2px">Phone</div>
+                  <div style="font-size:0.75rem;color:var(--text)">{{ parsedData.phone||'—' }}</div>
+                </div>
               </div>
-            </div>
-            <div *ngIf="parsedData.education?.length" class="p-3 bg-slate-800/50 rounded-xl">
-              <p class="text-xs text-slate-500 mb-2">Education</p>
-              <div *ngFor="let e of parsedData.education" class="text-sm text-slate-300">{{ e.degree }} — {{ e.institution }} ({{ e.year }})</div>
-            </div>
-            <div *ngIf="parsedData.certifications?.length" class="p-3 bg-slate-800/50 rounded-xl">
-              <p class="text-xs text-slate-500 mb-2">Certifications</p>
-              <div class="flex flex-wrap gap-1.5">
-                <span *ngFor="let c of parsedData.certifications" class="badge badge-green">{{ c }}</span>
+              <div *ngIf="parsedData.skills?.length" style="padding:0.625rem 0.75rem;background:var(--bg);border:1px solid var(--border);border-radius:6px;margin-bottom:0.625rem">
+                <div style="font-size:0.6rem;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:6px">Skills</div>
+                <div style="display:flex;flex-wrap:wrap;gap:4px">
+                  <span *ngFor="let s of parsedData.skills" class="badge badge-purple" style="font-size:0.6875rem">{{ s }}</span>
+                </div>
+              </div>
+              <div *ngIf="parsedData.education?.length" style="padding:0.625rem 0.75rem;background:var(--bg);border:1px solid var(--border);border-radius:6px">
+                <div style="font-size:0.6rem;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:6px">Education</div>
+                <div *ngFor="let e of parsedData.education" style="font-size:0.75rem;color:var(--text)">{{ e.degree }} — {{ e.institution }} ({{ e.year }})</div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Ranking Tab -->
-      <div *ngIf="activeTab === 'ranking'" class="card">
-        <h3 class="font-semibold text-white mb-2">🏆 Candidate Ranking</h3>
-        <p class="text-sm text-slate-400 mb-6">Enter job requirements and candidate skills to get an AI-powered match score.</p>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div>
-            <h4 class="text-sm font-medium text-slate-300 mb-3">Job Requirements</h4>
-            <div class="space-y-3">
-              <div class="form-group">
+        <!-- ======= RANKING ======= -->
+        <div *ngIf="activeTab==='ranking'" style="padding:1.25rem">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.25rem">
+            <div>
+              <div style="font-size:0.875rem;font-weight:600;color:var(--text);margin-bottom:0.75rem">Job Requirements</div>
+              <div class="form-group" style="margin-bottom:0.75rem">
                 <label class="form-label">Required Skills (comma-separated)</label>
-                <input id="job-skills-input" type="text" [(ngModel)]="rankJob.skills" class="form-input" placeholder="React, Node.js, MongoDB">
+                <input type="text" [(ngModel)]="rankJob.skills" class="form-input" placeholder="React, Node.js, MongoDB">
               </div>
-              <div class="form-group">
+              <div class="form-group" style="margin-bottom:0">
                 <label class="form-label">Required Experience (years)</label>
                 <input type="number" [(ngModel)]="rankJob.experience" class="form-input" min="0" max="20">
               </div>
             </div>
-          </div>
-          <div>
-            <h4 class="text-sm font-medium text-slate-300 mb-3">Candidate Profile</h4>
-            <div class="space-y-3">
-              <div class="form-group">
+            <div>
+              <div style="font-size:0.875rem;font-weight:600;color:var(--text);margin-bottom:0.75rem">Candidate Profile</div>
+              <div class="form-group" style="margin-bottom:0.75rem">
                 <label class="form-label">Candidate Name</label>
                 <input type="text" [(ngModel)]="rankCandidate.name" class="form-input" placeholder="John Doe">
               </div>
-              <div class="form-group">
+              <div class="form-group" style="margin-bottom:0.75rem">
                 <label class="form-label">Candidate Skills (comma-separated)</label>
                 <input type="text" [(ngModel)]="rankCandidate.skills" class="form-input" placeholder="React, TypeScript, CSS">
               </div>
-              <div class="form-group">
+              <div class="form-group" style="margin-bottom:0">
                 <label class="form-label">Years of Experience</label>
                 <input type="number" [(ngModel)]="rankCandidate.experience" class="form-input" min="0">
               </div>
             </div>
           </div>
-        </div>
 
-        <button (click)="calculateRanking()" id="btn-rank" class="btn-primary" [disabled]="ranking">
-          <span *ngIf="!ranking">⚡ Calculate AI Score</span>
-          <span *ngIf="ranking" class="flex items-center gap-2"><svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Calculating...</span>
-        </button>
+          <button (click)="calculateRanking()" class="btn-primary" [disabled]="ranking">
+            <i [class]="ranking?'fa-solid fa-spinner fa-spin':'fa-solid fa-bolt'"></i>
+            {{ ranking ? 'Calculating...' : 'Calculate AI Score' }}
+          </button>
 
-        <!-- Results -->
-        <div *ngIf="rankResult" class="mt-6 p-5 bg-slate-800/50 rounded-2xl border border-slate-700/50 animate-fade-in">
-          <!-- Final Score -->
-          <div class="flex items-center justify-between mb-6">
-            <div>
-              <p class="text-sm text-slate-400">Final AI Score</p>
-              <p class="text-4xl font-black" [class]="rankResult.finalScore >= 80 ? 'text-emerald-400' : rankResult.finalScore >= 60 ? 'text-amber-400' : 'text-red-400'">{{ rankResult.finalScore }}%</p>
-            </div>
-            <div class="w-24 h-24 relative">
-              <svg class="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#1e293b" stroke-width="3.5"/>
-                <circle cx="18" cy="18" r="15.9" fill="none"
-                  [attr.stroke]="rankResult.finalScore >= 80 ? '#10b981' : rankResult.finalScore >= 60 ? '#f59e0b' : '#ef4444'"
-                  stroke-width="3.5" stroke-linecap="round"
-                  [attr.stroke-dasharray]="rankResult.finalScore + ' 100'"
-                  stroke-dashoffset="0"/>
-              </svg>
-              <span class="absolute inset-0 flex items-center justify-center text-sm font-bold text-white">{{ rankResult.finalScore }}%</span>
-            </div>
-          </div>
-
-          <!-- Skill breakdown -->
-          <div class="space-y-3 mb-5">
-            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Skill Breakdown</p>
-            <div *ngFor="let entry of getSkillEntries(rankResult.skillScores)" class="flex items-center gap-3">
-              <span class="text-xs text-slate-400 w-28 flex-shrink-0">{{ entry[0] }}</span>
-              <div class="flex-1 ai-score-bar">
-                <div class="ai-score-fill" [style.width.%]="entry[1]" [style.background]="entry[1] >= 80 ? '#10b981' : entry[1] >= 60 ? '#f59e0b' : '#ef4444'"></div>
+          <div *ngIf="rankResult" style="margin-top:1.25rem;padding:1.25rem;background:var(--bg);border:1px solid var(--border);border-radius:8px" class="animate-fade-in">
+            <div style="display:flex;align-items:center;gap:2rem;margin-bottom:1.25rem">
+              <div>
+                <div style="font-size:0.6875rem;color:var(--muted);font-weight:600;margin-bottom:4px">FINAL AI SCORE</div>
+                <div style="font-size:2.5rem;font-weight:900;line-height:1" [style.color]="rankResult.finalScore>=80?'#16A34A':rankResult.finalScore>=60?'#D97706':'#DC2626'">{{ rankResult.finalScore }}%</div>
               </div>
-              <span class="text-sm font-semibold w-12 text-right" [class]="entry[1] >= 80 ? 'text-emerald-400' : entry[1] >= 60 ? 'text-amber-400' : 'text-red-400'">{{ entry[1] }}</span>
+              <div style="flex:1">
+                <div *ngFor="let e of getSkillEntries(rankResult.skillScores)" style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem">
+                  <span style="font-size:0.75rem;color:var(--muted);width:80px;flex-shrink:0">{{ e[0] }}</span>
+                  <div class="ai-score-bar" style="flex:1"><div class="ai-score-fill" [style.width.%]="e[1]" [style.background]="e[1]>=80?'#16A34A':e[1]>=60?'#D97706':'#DC2626'"></div></div>
+                  <span style="font-size:0.75rem;font-weight:700;width:28px;text-align:right" [style.color]="e[1]>=80?'#16A34A':e[1]>=60?'#D97706':'#DC2626'">{{ e[1] }}</span>
+                </div>
+              </div>
+            </div>
+            <div *ngIf="rankResult.aiSummary" style="padding:0.75rem;background:#F0FDF4;border:1px solid rgba(22,163,74,0.2);border-radius:6px;font-size:0.8125rem;color:var(--text);line-height:1.5">
+              <i class="fa-solid fa-robot" style="color:#16A34A;margin-right:0.375rem"></i>{{ rankResult.aiSummary }}
+            </div>
+          </div>
+        </div>
+
+        <!-- ======= QUESTIONS ======= -->
+        <div *ngIf="activeTab==='questions'" style="padding:1.25rem">
+          <div style="display:grid;grid-template-columns:2fr 1fr;gap:1rem;margin-bottom:1.25rem">
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Skills (comma-separated)</label>
+              <input type="text" [(ngModel)]="iqSkills" class="form-input" placeholder="React, Node.js, MongoDB, TypeScript">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Experience Level</label>
+              <select [(ngModel)]="iqLevel" class="form-select">
+                <option value="Junior">Junior (0-2 yrs)</option>
+                <option value="Mid">Mid (2-5 yrs)</option>
+                <option value="Senior">Senior (5+ yrs)</option>
+              </select>
             </div>
           </div>
 
-          <!-- AI Summary -->
-          <div *ngIf="rankResult.aiSummary" class="p-4 bg-primary-600/5 border border-primary-600/20 rounded-xl">
-            <p class="text-xs font-semibold text-primary-400 mb-1">🤖 AI Summary</p>
-            <p class="text-sm text-slate-300 leading-relaxed">{{ rankResult.aiSummary }}</p>
-          </div>
-        </div>
-      </div>
+          <button (click)="generateQuestions()" class="btn-primary" style="margin-bottom:1.25rem" [disabled]="generatingQ||!iqSkills">
+            <i [class]="generatingQ?'fa-solid fa-spinner fa-spin':'fa-solid fa-wand-magic-sparkles'"></i>
+            {{ generatingQ ? 'Generating...' : 'Generate Questions' }}
+          </button>
 
-      <!-- Questions Tab -->
-      <div *ngIf="activeTab === 'questions'" class="card">
-        <h3 class="font-semibold text-white mb-2">🎯 Interview Question Generator</h3>
-        <p class="text-sm text-slate-400 mb-6">Generate tailored interview questions based on skills and experience level.</p>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div class="md:col-span-2 form-group">
-            <label class="form-label">Skills (comma-separated)</label>
-            <input id="iq-skills" type="text" [(ngModel)]="iqSkills" class="form-input" placeholder="React, Node.js, MongoDB, TypeScript">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Experience Level</label>
-            <select [(ngModel)]="iqLevel" class="form-select">
-              <option value="Junior">Junior (0-2 yrs)</option>
-              <option value="Mid">Mid (2-5 yrs)</option>
-              <option value="Senior">Senior (5+ yrs)</option>
-            </select>
-          </div>
-        </div>
-
-        <button (click)="generateQuestions()" id="btn-gen-questions" class="btn-primary mb-6" [disabled]="generatingQ || !iqSkills">
-          <span *ngIf="!generatingQ">✨ Generate Questions</span>
-          <span *ngIf="generatingQ" class="flex items-center gap-2"><svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Generating...</span>
-        </button>
-
-        <div *ngIf="generatedQuestions" class="space-y-6 animate-fade-in">
-          <div *ngFor="let skillEntry of getSkillEntries(generatedQuestions)" class="p-5 bg-slate-800/40 rounded-2xl border border-slate-700/50">
-            <h4 class="font-semibold text-primary-400 mb-3 flex items-center gap-2">
-              <span class="w-6 h-6 bg-primary-600/20 rounded-lg flex items-center justify-center text-xs">{{ skillEntry[0].charAt(0).toUpperCase() }}</span>
-              {{ skillEntry[0] }} Questions
-              <span class="ml-auto badge badge-purple">{{ skillEntry[1].length }} questions</span>
-            </h4>
-            <ol class="space-y-2.5">
-              <li *ngFor="let q of skillEntry[1]; let i = index" class="flex gap-3">
-                <span class="text-xs text-slate-500 mt-0.5 w-5 flex-shrink-0">{{ i + 1 }}.</span>
-                <p class="text-sm text-slate-300 leading-relaxed">{{ q }}</p>
-              </li>
-            </ol>
+          <div *ngIf="generatedQuestions" style="display:flex;flex-direction:column;gap:1rem" class="animate-fade-in">
+            <div *ngFor="let se of getSkillEntries(generatedQuestions)" style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+              <div style="padding:0.625rem 1rem;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+                <span style="font-size:0.8125rem;font-weight:700;color:var(--primary)">{{ se[0] }}</span>
+                <span class="badge badge-purple">{{ se[1].length }} questions</span>
+              </div>
+              <ol style="margin:0;padding:0;list-style:none">
+                <li *ngFor="let q of se[1]; let i=index; let last=last"
+                    style="display:flex;gap:0.5rem;padding:0.625rem 1rem"
+                    [style.border-bottom]="!last?'1px solid var(--border)':''">
+                  <span style="font-size:0.75rem;font-weight:600;color:var(--muted);width:18px;flex-shrink:0">{{ i+1 }}.</span>
+                  <p style="font-size:0.8125rem;color:var(--text);margin:0;line-height:1.4">{{ q }}</p>
+                </li>
+              </ol>
+            </div>
           </div>
         </div>
       </div>
@@ -217,23 +207,20 @@ import { AiService } from '../../services/ai.service';
 export class AiEngineComponent implements OnInit {
   activeTab = 'parser';
   tabs = [
-    { id: 'parser', label: '📄 Resume Parser' },
-    { id: 'ranking', label: '🏆 Candidate Ranking' },
-    { id: 'questions', label: '🎯 Question Generator' }
+    { id: 'parser',    label: 'Resume Parser',      icon: 'fa-solid fa-file-lines' },
+    { id: 'ranking',   label: 'Candidate Ranking',   icon: 'fa-solid fa-trophy' },
+    { id: 'questions', label: 'Question Generator',  icon: 'fa-solid fa-circle-question' },
   ];
 
-  // Parser
   resumeText = '';
   parsedData: any = null;
   parsing = false;
 
-  // Ranking
   rankJob = { skills: 'React, Node.js, MongoDB', experience: 3 };
   rankCandidate = { name: 'Alex Johnson', skills: 'React, TypeScript, Node.js, CSS', experience: 4 };
   ranking = false;
   rankResult: any = null;
 
-  // Questions
   iqSkills = 'React, Node.js, MongoDB';
   iqLevel = 'Mid';
   generatingQ = false;
@@ -242,12 +229,19 @@ export class AiEngineComponent implements OnInit {
   constructor(private aiService: AiService) {}
   ngOnInit() {}
 
+  onFileSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      this.resumeText = `[File: ${file.name}]\n\nJohn Doe\njohn@example.com | +1-555-0123\n\nSenior Developer at TechCorp (2021-2024)\nReact, Node.js, TypeScript\n\nB.Sc. Computer Science - MIT (2019)`;
+    }
+  }
+
   parseResume() {
     this.parsing = true;
     this.aiService.parseResume(this.resumeText).subscribe({
-      next: (data) => { this.parsedData = data; this.parsing = false; },
+      next: d => { this.parsedData = d; this.parsing = false; },
       error: () => {
-        this.parsedData = { name: 'John Doe', email: 'john@example.com', phone: '+1-555-0123', experience: 5, skills: ['JavaScript', 'React', 'Node.js', 'MongoDB'], education: [{ degree: 'B.Sc. Computer Science', institution: 'MIT', year: 2019 }], certifications: ['AWS Certified Developer', 'Google Cloud Professional'] };
+        this.parsedData = { name:'John Doe', email:'john@example.com', phone:'+1-555-0123', experience:5, skills:['JavaScript','React','Node.js','MongoDB'], education:[{ degree:'B.Sc. Computer Science', institution:'MIT', year:2019 }] };
         this.parsing = false;
       }
     });
@@ -258,20 +252,16 @@ export class AiEngineComponent implements OnInit {
     const jobSkills = this.rankJob.skills.split(',').map(s => s.trim()).filter(Boolean);
     const candidateSkills = this.rankCandidate.skills.split(',').map(s => s.trim()).filter(Boolean);
     const skillScores: any = {};
-    jobSkills.forEach(skill => {
-      const has = candidateSkills.some(cs => cs.toLowerCase().includes(skill.toLowerCase()));
-      skillScores[skill] = has ? Math.floor(Math.random() * 15) + 83 : Math.floor(Math.random() * 40) + 20;
+    jobSkills.forEach(sk => {
+      const has = candidateSkills.some(cs => cs.toLowerCase().includes(sk.toLowerCase()));
+      skillScores[sk] = has ? Math.floor(Math.random()*15)+83 : Math.floor(Math.random()*40)+20;
     });
-    const expScore = this.rankCandidate.experience >= this.rankJob.experience ? 100 : Math.round((this.rankCandidate.experience / Math.max(this.rankJob.experience, 1)) * 100);
+    const expScore = this.rankCandidate.experience >= this.rankJob.experience ? 100 : Math.round((this.rankCandidate.experience/Math.max(this.rankJob.experience,1))*100);
     skillScores['Experience'] = expScore;
     const scores = Object.values(skillScores) as number[];
-    const finalScore = Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length);
+    const finalScore = Math.round(scores.reduce((a:number,b:number)=>a+b,0)/scores.length);
     setTimeout(() => {
-      this.rankResult = {
-        finalScore,
-        skillScores,
-        aiSummary: `${this.rankCandidate.name} has ${this.rankCandidate.experience} years of experience with skills in ${candidateSkills.slice(0, 3).join(', ')}. Match score of ${finalScore}% indicates ${finalScore >= 80 ? 'strong alignment' : finalScore >= 60 ? 'moderate alignment' : 'low alignment'} with requirements. ${finalScore >= 75 ? 'Recommended for Technical Interview.' : finalScore >= 55 ? 'May proceed to phone screening.' : 'Not recommended at this time.'}`
-      };
+      this.rankResult = { finalScore, skillScores, aiSummary:`${this.rankCandidate.name} has ${this.rankCandidate.experience}yr experience. Score ${finalScore}% — ${finalScore>=80?'Strong match. Recommend for Technical Interview.':finalScore>=60?'Moderate match. Proceed to phone screening.':'Low match. Not recommended at this time.'}` };
       this.ranking = false;
     }, 800);
   }
@@ -280,25 +270,15 @@ export class AiEngineComponent implements OnInit {
     this.generatingQ = true;
     const skills = this.iqSkills.split(',').map(s => s.trim()).filter(Boolean);
     this.aiService.generateInterviewQuestions(skills, this.iqLevel).subscribe({
-      next: (data) => { this.generatedQuestions = data.questions; this.generatingQ = false; },
+      next: d => { this.generatedQuestions = d.questions; this.generatingQ = false; },
       error: () => {
         const q: any = {};
-        skills.forEach(skill => {
-          q[skill] = [
-            `What are the core principles of ${skill} that you use daily?`,
-            `Explain a complex ${skill} challenge you recently solved.`,
-            `How do you handle performance issues in ${skill}?`,
-            `What testing strategies do you use for ${skill} code?`,
-            `Describe your ${skill} best practices and coding standards.`,
-          ];
-        });
+        skills.forEach(sk => { q[sk] = [`What are the core principles of ${sk}?`,`Explain a complex ${sk} challenge you solved.`,`How do you handle performance issues in ${sk}?`,`Describe your ${sk} testing strategy.`,`What are your ${sk} best practices?`]; });
         this.generatedQuestions = q;
         this.generatingQ = false;
       }
     });
   }
 
-  getSkillEntries(obj: any): any[] {
-    return obj ? Object.entries(obj) : [];
-  }
+  getSkillEntries(obj: any): any[] { return obj ? Object.entries(obj) : []; }
 }

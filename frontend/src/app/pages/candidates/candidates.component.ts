@@ -23,73 +23,108 @@ import { JobService } from '../../services/job.service';
         </button>
       </div>
 
-      <!-- Filters -->
-      <div class="card">
-        <div class="flex flex-wrap gap-3">
-          <div class="search-bar flex-1 min-w-48">
-            <svg class="search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            <input id="candidate-search" type="text" [(ngModel)]="searchQuery" (input)="filterCandidates()" class="search-input" placeholder="Search candidates...">
+      <!-- Main Table Card -->
+      <div class="card" style="padding:0;overflow:hidden">
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+          <div class="search-wrap" style="flex:1;min-width:200px">
+            <svg class="search-icon-inner" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input id="candidate-search" type="text" [(ngModel)]="searchQuery" (input)="filterCandidates()" placeholder="Search candidates...">
           </div>
-          <select id="job-rank-filter" [(ngModel)]="selectedJob" (change)="filterCandidates()" class="form-select w-48">
+          <select id="job-rank-filter" [(ngModel)]="selectedJob" (change)="filterCandidates()" class="form-select" style="width:auto;min-width:160px">
             <option value="">All Candidates</option>
             <option *ngFor="let job of jobs" [value]="job._id">{{ job.title }}</option>
           </select>
-          <select [(ngModel)]="sortBy" (change)="filterCandidates()" class="form-select w-40">
-            <option value="aiScore">AI Score</option>
-            <option value="name">Name</option>
-            <option value="experience">Experience</option>
+          <select [(ngModel)]="sortBy" (change)="filterCandidates()" class="form-select" style="width:auto;min-width:130px">
+            <option value="aiScore">Sort: AI Score</option>
+            <option value="name">Sort: Name</option>
+            <option value="experience">Sort: Experience</option>
           </select>
         </div>
-      </div>
 
-      <!-- Candidate Cards -->
-      <div *ngIf="loading" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        <div *ngFor="let i of [1,2,3,4,5,6]" class="card"><div class="skeleton h-48 rounded-xl"></div></div>
-      </div>
+        <!-- Loading -->
+        <div *ngIf="loading" style="padding:1.5rem">
+          <div *ngFor="let i of [1,2,3,4,5]" class="skeleton" style="height:48px;margin-bottom:6px"></div>
+        </div>
 
-      <div *ngIf="!loading" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        <div *ngFor="let c of filteredCandidates" class="card-hover">
-          <!-- Header -->
-          <div class="flex items-start gap-3 mb-3">
-            <div class="avatar w-12 h-12 text-lg flex items-center justify-center flex-shrink-0">{{ c.name.charAt(0) }}</div>
-            <div class="flex-1 min-w-0">
-              <h3 class="font-semibold text-white truncate">{{ c.name }}</h3>
-              <p class="text-sm text-slate-400">{{ c.email }}</p>
-              <p class="text-xs text-slate-500">{{ c.experience }} yrs experience</p>
-            </div>
-            <!-- AI Score -->
-            <div *ngIf="c.aiScore" class="flex-shrink-0 text-center">
-              <div class="text-xl font-bold" [class]="getScoreColor(c.aiScore)">{{ c.aiScore }}%</div>
-              <div class="text-xs text-slate-500">AI Score</div>
-            </div>
+        <!-- Table -->
+        <div *ngIf="!loading" class="table-container">
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="width:36px"><input type="checkbox" style="width:14px;height:14px;accent-color:var(--primary);cursor:pointer"></th>
+                <th>Candidate</th>
+                <th>Experience</th>
+                <th>Skills</th>
+                <th>AI Score</th>
+                <th>AI Summary</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngIf="filteredCandidates.length === 0">
+                <td colspan="7" style="text-align:center;padding:3rem;color:var(--muted)">No candidates found</td>
+              </tr>
+              <tr *ngFor="let c of filteredCandidates">
+                <td><input type="checkbox" style="width:14px;height:14px;accent-color:var(--primary);cursor:pointer"></td>
+                <td>
+                  <div style="display:flex;align-items:center;gap:0.625rem">
+                    <div class="avatar" style="width:34px;height:34px;font-size:0.875rem;flex-shrink:0">{{ c.name.charAt(0) }}</div>
+                    <div>
+                      <p style="font-weight:600;color:var(--text);font-size:0.8125rem;margin:0">{{ c.name }}</p>
+                      <p style="font-size:0.6875rem;color:var(--muted);margin:0">{{ c.email }}</p>
+                    </div>
+                  </div>
+                </td>
+                <td style="font-size:0.8125rem;color:var(--text)">{{ c.experience }} yrs</td>
+                <td>
+                  <div style="display:flex;flex-wrap:wrap;gap:3px">
+                    <span *ngFor="let skill of (c.skills || []).slice(0,3)" class="badge badge-blue" style="font-size:0.6rem;padding:1px 6px">{{ skill }}</span>
+                    <span *ngIf="(c.skills||[]).length > 3" class="badge badge-slate" style="font-size:0.6rem;padding:1px 6px">+{{ c.skills.length-3 }}</span>
+                  </div>
+                </td>
+                <td>
+                  <div *ngIf="c.aiScore" style="display:flex;align-items:center;gap:0.5rem">
+                    <div style="width:56px;height:6px;background:#F1F5F9;border-radius:9999px;overflow:hidden">
+                      <div [style.width.%]="c.aiScore" [style.background]="getScoreGradient(c.aiScore)" style="height:100%;border-radius:9999px"></div>
+                    </div>
+                    <span style="font-size:0.8125rem;font-weight:700" [style.color]="c.aiScore>=80?'#16A34A':c.aiScore>=60?'#D97706':'#DC2626'">{{ c.aiScore }}%</span>
+                  </div>
+                  <span *ngIf="!c.aiScore" style="color:var(--muted);font-size:0.75rem">Not ranked</span>
+                </td>
+                <td style="max-width:200px">
+                  <p *ngIf="c.aiSummary" style="font-size:0.75rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.aiSummary }}</p>
+                  <span *ngIf="!c.aiSummary" style="color:var(--muted)">—</span>
+                </td>
+                <td>
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <a [routerLink]="['/candidates', c._id]" class="btn-icon btn-icon-primary" title="View Profile">
+                      <i class="fa-regular fa-eye"></i>
+                    </a>
+                    <button *ngIf="selectedJob" (click)="rankCandidate(c)" class="btn-icon btn-icon-primary" [disabled]="rankingId === c._id" title="AI Rank">
+                      <i *ngIf="rankingId !== c._id" class="fa-solid fa-microchip" style="font-size:0.65rem"></i>
+                      <i *ngIf="rankingId === c._id" class="fa-solid fa-spinner" style="font-size:0.65rem;animation:spin 1s linear infinite"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-bar">
+          <span class="pagination-info">Showing 1–{{ filteredCandidates.length }} of {{ filteredCandidates.length }} rows</span>
+          <div style="display:flex;align-items:center;gap:0.5rem">
+            <select class="page-size-select">
+              <option>10 / page</option><option>20 / page</option><option>50 / page</option>
+            </select>
           </div>
-
-          <!-- AI Score bar -->
-          <div *ngIf="c.aiScore" class="mb-3">
-            <div class="ai-score-bar">
-              <div class="ai-score-fill" [style.width.%]="c.aiScore" [style.background]="getScoreGradient(c.aiScore)"></div>
-            </div>
-          </div>
-
-          <!-- Skills -->
-          <div class="flex flex-wrap gap-1.5 mb-3">
-            <span *ngFor="let skill of (c.skills || []).slice(0,4)" class="badge badge-blue">{{ skill }}</span>
-            <span *ngIf="(c.skills || []).length > 4" class="badge badge-slate">+{{ c.skills.length - 4 }}</span>
-          </div>
-
-          <!-- AI Summary -->
-          <div *ngIf="c.aiSummary" class="p-3 bg-primary-600/5 border border-primary-600/20 rounded-xl mb-3">
-            <p class="text-xs text-primary-300 leading-relaxed line-clamp-2">{{ c.aiSummary }}</p>
-          </div>
-
-          <!-- Actions -->
-          <div class="flex gap-2 pt-3 border-t border-slate-700/50">
-            <a [routerLink]="['/candidates', c._id]" class="btn-secondary btn-sm flex-1 text-center">Profile</a>
-            <button *ngIf="selectedJob" (click)="rankCandidate(c)" class="btn-primary btn-sm" [disabled]="rankingId === c._id">
-              <svg *ngIf="rankingId !== c._id" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H4a2 2 0 01-2-2V5a2 2 0 012-2h16a2 2 0 012 2v10a2 2 0 01-2 2h-1"/></svg>
-              <svg *ngIf="rankingId === c._id" class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-              AI Rank
-            </button>
+          <div class="pagination-controls">
+            <button class="page-btn" disabled><i class="fa-solid fa-chevron-left" style="font-size:0.6rem"></i>&nbsp;Previous</button>
+            <span style="font-size:0.8125rem;color:var(--muted);padding:0 0.25rem">Page 1 of 1</span>
+            <button class="page-btn" disabled>Next&nbsp;<i class="fa-solid fa-chevron-right" style="font-size:0.6rem"></i></button>
           </div>
         </div>
       </div>
@@ -98,7 +133,7 @@ import { JobService } from '../../services/job.service';
     <!-- Add Candidate Modal -->
     <div *ngIf="showAddModal" class="modal-overlay" (click)="showAddModal=false">
       <div class="modal-box" (click)="$event.stopPropagation()">
-        <h3 class="text-lg font-bold text-white mb-4">Add Candidate</h3>
+        <h3 style="font-size:1.0625rem;font-weight:700;color:var(--text);margin-bottom:1.25rem">Add Candidate</h3>
         <div class="space-y-3">
           <div class="form-group">
             <label class="form-label">Full Name *</label>

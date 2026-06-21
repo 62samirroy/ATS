@@ -21,7 +21,7 @@ import { AuthService } from '../../services/auth.service';
         <div class="text-center mb-8">
           <div class="inline-flex items-center justify-center w-16 h-16 bg-primary-600/20 rounded-2xl mb-4 glow">
             <svg class="w-8 h-8 text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
             </svg>
           </div>
           <h1 class="text-3xl font-bold text-gradient">HireFlow AI</h1>
@@ -63,13 +63,19 @@ import { AuthService } from '../../services/auth.service';
 
             <!-- Demo accounts -->
             <div class="p-3 bg-slate-800/50 rounded-xl border border-slate-700/50">
-              <p class="text-xs text-slate-400 mb-2 font-medium">🚀 Demo Accounts:</p>
+              <p class="text-xs text-slate-400 mb-2 font-medium">🚀 Demo Accounts (click to fill):</p>
               <div class="grid grid-cols-2 gap-2 text-xs">
                 <button type="button" (click)="fillDemo('admin')" class="px-2 py-1.5 bg-primary-600/20 text-primary-400 rounded-lg border border-primary-500/20 hover:bg-primary-600/30 transition-colors text-left">
                   <span class="font-semibold">Super Admin</span><br>admin&#64;hireflow.ai
                 </button>
                 <button type="button" (click)="fillDemo('hr')" class="px-2 py-1.5 bg-emerald-600/20 text-emerald-400 rounded-lg border border-emerald-500/20 hover:bg-emerald-600/30 transition-colors text-left">
                   <span class="font-semibold">HR Manager</span><br>hr&#64;hireflow.ai
+                </button>
+                <button type="button" (click)="fillDemo('interviewer')" class="px-2 py-1.5 bg-amber-600/20 text-amber-400 rounded-lg border border-amber-500/20 hover:bg-amber-600/30 transition-colors text-left">
+                  <span class="font-semibold">Interviewer</span><br>interviewer&#64;hireflow.ai
+                </button>
+                <button type="button" (click)="fillDemo('candidate')" class="px-2 py-1.5 bg-violet-600/20 text-violet-400 rounded-lg border border-violet-500/20 hover:bg-violet-600/30 transition-colors text-left">
+                  <span class="font-semibold">Candidate</span><br>candidate&#64;example.com
                 </button>
               </div>
             </div>
@@ -108,8 +114,10 @@ export class LoginComponent {
 
   fillDemo(role: string) {
     const demos: any = {
-      admin: { email: 'admin@hireflow.ai', password: 'Admin@123' },
-      hr: { email: 'hr@hireflow.ai', password: 'Hr@12345' }
+      admin: { email: 'admin@hireflow.ai', password: 'Admin@12345' },
+      hr: { email: 'hr@hireflow.ai', password: 'Hr@12345' },
+      interviewer: { email: 'interviewer@hireflow.ai', password: 'Int@12345' },
+      candidate: { email: 'candidate@example.com', password: 'Cand@12345' },
     };
     this.loginForm.patchValue(demos[role]);
   }
