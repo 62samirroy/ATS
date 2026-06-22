@@ -7,8 +7,9 @@ export interface IJob extends Document {
   experience: number;
   salary: { min: number; max: number; currency: string };
   location: string;
-  type: 'Full-time' | 'Part-time' | 'Contract' | 'Remote';
-  status: 'Draft' | 'Published' | 'Closed';
+  type: string;
+  status: string;
+  isDeleted: boolean;
   createdBy: mongoose.Schema.Types.ObjectId;
   companyId: mongoose.Schema.Types.ObjectId;
   createdAt: Date;
@@ -26,8 +27,9 @@ const JobSchema: Schema = new Schema({
     currency: { type: String, default: 'USD' }
   },
   location: { type: String },
-  type: { type: String, enum: ['Full-time', 'Part-time', 'Contract', 'Remote'], default: 'Full-time' },
-  status: { type: String, enum: ['Draft', 'Published', 'Closed'], default: 'Draft' },
+  type: { type: String, default: 'Full-time' },
+  status: { type: String, default: 'Draft' },
+  isDeleted: { type: Boolean, default: false },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company' },  // optional - not required for initial setup
 }, { timestamps: true });

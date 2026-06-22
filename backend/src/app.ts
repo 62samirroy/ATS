@@ -12,6 +12,10 @@ import interviewRoutes from './routes/interviewRoutes';
 import aiRoutes from './routes/aiRoutes';
 import reportRoutes from './routes/reportRoutes';
 import notificationRoutes from './routes/notificationRoutes';
+import jobSettingsRoutes from './routes/jobSettingsRoutes';
+import candidateSettingsRoutes from './routes/candidateSettingsRoutes';
+import interviewSettingsRoutes from './routes/interviewSettingsRoutes';
+import applicationSettingsRoutes from './routes/applicationSettingsRoutes';
 
 dotenv.config();
 
@@ -38,6 +42,10 @@ app.use('/api/interviews', interviewRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/job-settings', jobSettingsRoutes);
+app.use('/api/candidate-settings', candidateSettingsRoutes);
+app.use('/api/interview-settings', interviewSettingsRoutes);
+app.use('/api/application-settings', applicationSettingsRoutes);
 
 // 404 handler
 app.use((req, res) => {

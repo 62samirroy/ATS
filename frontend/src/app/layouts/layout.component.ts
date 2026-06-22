@@ -5,7 +5,7 @@ import { filter } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { NotificationService } from '../services/notification.service';
 
-interface NavItem { label: string; route: string; icon: string; roles?: string[]; }
+interface NavItem { label: string; route?: string; icon: string; roles?: string[]; children?: NavItem[]; expanded?: boolean; }
 
 @Component({
   selector: 'app-layout',
@@ -38,14 +38,40 @@ interface NavItem { label: string; route: string; icon: string; roles?: string[]
         <!-- Nav -->
         <nav style="flex:1;padding:0.5rem 0.625rem;overflow-y:auto" class="no-scrollbar">
           <ng-container *ngFor="let item of navItems">
-            <a *ngIf="canShow(item)"
+            <!-- Normal Item -->
+            <a *ngIf="canShow(item) && !item.children"
                [routerLink]="item.route"
                class="sidebar-item"
-               [class.active]="isActive(item.route)"
+               [class.active]="item.route && isActive(item.route)"
                (click)="sidebarOpen=false">
               <i [class]="item.icon"></i>
               {{ item.label }}
             </a>
+
+            <!-- Expandable Item -->
+            <div *ngIf="canShow(item) && item.children">
+              <div class="sidebar-item" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center"
+                   (click)="item.expanded = !item.expanded">
+                <div style="display:flex; align-items:center; gap:0.625rem">
+                  <i [class]="item.icon" style="width:16px;text-align:center"></i>
+                  {{ item.label }}
+                </div>
+                <i class="fa-solid" [class.fa-chevron-down]="!item.expanded" [class.fa-chevron-up]="item.expanded" style="font-size:0.7rem"></i>
+              </div>
+              <div *ngIf="item.expanded" style="padding-left:1.5rem; margin-top:0.25rem; display:flex; flex-direction:column; gap:0.25rem">
+                <ng-container *ngFor="let child of item.children">
+                  <a *ngIf="canShow(child)"
+                     [routerLink]="child.route"
+                     class="sidebar-item"
+                     [class.active]="child.route && isActive(child.route, true)"
+                     (click)="sidebarOpen=false"
+                     style="padding:0.4rem 0.6rem; font-size:0.8125rem">
+                     <i [class]="child.icon"></i>
+                     {{ child.label }}
+                  </a>
+                </ng-container>
+              </div>
+            </div>
           </ng-container>
         </nav>
 
@@ -122,10 +148,41 @@ export class LayoutComponent implements OnInit {
 
   navItems: NavItem[] = [
     { label: 'Dashboard',       route: '/dashboard',       icon: 'fa-solid fa-chart-pie' },
-    { label: 'Jobs',            route: '/jobs',            icon: 'fa-solid fa-briefcase' },
-    { label: 'Candidates',      route: '/candidates',      icon: 'fa-solid fa-users',           roles: ['HR Manager', 'Super Admin', 'Interviewer'] },
-    { label: 'Applications',    route: '/applications',    icon: 'fa-solid fa-file-lines' },
-    { label: 'Interviews',      route: '/interviews',      icon: 'fa-regular fa-calendar-check' },
+    { 
+      label: 'Jobs',      icon: 'fa-solid fa-briefcase',
+      children: [
+        { label: 'Dashboard', route: '/jobs/dashboard', icon: 'fa-solid fa-chart-pie', roles: ['Super Admin', 'HR Manager'] },
+        { label: 'Job List', route: '/jobs', icon: 'fa-solid fa-briefcase', roles: ['Super Admin', 'HR Manager'] },
+        { label: 'Settings', route: '/jobs/settings', icon: 'fa-solid fa-gear', roles: ['Super Admin'] }
+      ]
+    },
+    {
+      label: 'Candidates',
+      icon: 'fa-solid fa-users',
+      children: [
+        { label: 'Dashboard', route: '/candidates/dashboard', icon: 'fa-solid fa-chart-pie', roles: ['Super Admin', 'HR Manager', 'Interviewer'] },
+        { label: 'Candidate List', route: '/candidates', icon: 'fa-solid fa-users', roles: ['Super Admin', 'HR Manager', 'Interviewer'] },
+        { label: 'Settings', route: '/candidates/settings', icon: 'fa-solid fa-gear', roles: ['Super Admin'] }
+      ]
+    },
+    {
+      label: 'Applications',
+      icon: 'fa-solid fa-file-lines',
+      children: [
+        { label: 'Dashboard', route: '/applications/dashboard', icon: 'fa-solid fa-chart-pie', roles: ['Super Admin', 'HR Manager', 'Interviewer'] },
+        { label: 'Application List', route: '/applications', icon: 'fa-solid fa-file-lines', roles: ['Super Admin', 'HR Manager', 'Interviewer'] },
+        { label: 'Settings', route: '/applications/settings', icon: 'fa-solid fa-gear', roles: ['Super Admin'] }
+      ]
+    },
+    {
+      label: 'Interviews',
+      icon: 'fa-regular fa-calendar-check',
+      children: [
+        { label: 'Dashboard', route: '/interviews/dashboard', icon: 'fa-solid fa-chart-pie', roles: ['Super Admin', 'HR Manager', 'Interviewer'] },
+        { label: 'Interview List', route: '/interviews', icon: 'fa-solid fa-calendar-check', roles: ['Super Admin', 'HR Manager', 'Interviewer'] },
+        { label: 'Settings', route: '/interviews/settings', icon: 'fa-solid fa-gear', roles: ['Super Admin'] }
+      ]
+    },
     { label: 'AI Engine',       route: '/ai',              icon: 'fa-solid fa-microchip',       roles: ['HR Manager', 'Super Admin'] },
     { label: 'Reports',         route: '/reports',         icon: 'fa-solid fa-chart-bar',       roles: ['HR Manager', 'Super Admin'] },
     { label: 'Notifications',   route: '/notifications',   icon: 'fa-solid fa-bell' },
@@ -150,8 +207,53 @@ export class LayoutComponent implements OnInit {
     this.notifService.getUnreadCount();
     this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe((e: any) => { this.currentUrl = e.url; });
     this.currentUrl = this.router.url;
+    
+    const jobsItem = this.navItems.find(i => i.label === 'Jobs');
+    if (jobsItem && this.currentUrl.startsWith('/jobs')) {
+      jobsItem.expanded = true;
+    }
   }
 
-  isActive(route: string): boolean { return this.currentUrl === route || this.currentUrl.startsWith(route + '/'); }
-  getPageTitle(): string { return this.navItems.find(n => this.isActive(n.route))?.label || 'HireFlow ATS'; }
+  isActive(route: string, isChild: boolean = false): boolean { 
+    if (route === '/jobs') {
+      if (this.currentUrl.includes('/jobs/settings') || 
+          this.currentUrl.includes('/jobs/dashboard') || 
+          this.currentUrl.includes('/jobs/recycle-bin')) {
+        return false;
+      }
+    }
+    if (route === '/candidates') {
+      if (this.currentUrl.includes('/candidates/settings') || 
+          this.currentUrl.includes('/candidates/dashboard') || 
+          this.currentUrl.includes('/candidates/recycle-bin')) {
+        return false;
+      }
+    }
+    if (route === '/interviews') {
+      if (this.currentUrl.includes('/interviews/settings') || 
+          this.currentUrl.includes('/interviews/dashboard') || 
+          this.currentUrl.includes('/interviews/recycle-bin')) {
+        return false;
+      }
+    }
+    if (route === '/applications') {
+      if (this.currentUrl.includes('/applications/settings') || 
+          this.currentUrl.includes('/applications/dashboard') || 
+          this.currentUrl.includes('/applications/recycle-bin')) {
+        return false;
+      }
+    }
+    return this.currentUrl === route || this.currentUrl.startsWith(route + '/'); 
+  }
+  getPageTitle(): string { 
+    for (const item of this.navItems) {
+      if (!item.children && item.route && this.isActive(item.route)) return item.label;
+      if (item.children) {
+        for (const child of item.children) {
+          if (child.route && this.isActive(child.route)) return child.label;
+        }
+      }
+    }
+    return 'HireFlow ATS'; 
+  }
 }

@@ -9,7 +9,7 @@ import { io } from '../server';
 export const getApplications = async (req: Request, res: Response): Promise<void> => {
   try {
     const { jobId, status } = req.query;
-    const filter: any = {};
+    const filter: any = { isDeleted: false };
     if (jobId) filter.jobId = jobId;
     if (status) filter.status = status;
     const applications = await Application.find(filter)
@@ -54,8 +54,8 @@ export const createApplication = async (req: Request, res: Response): Promise<vo
 export const updateApplicationStatus = async (req: Request, res: Response): Promise<void> => {
   try {
     const { status, notes } = req.body;
-    const application = await Application.findByIdAndUpdate(
-      req.params.id,
+    const application = await Application.findOneAndUpdate(
+      { _id: req.params.id, isDeleted: false },
       { status, currentStage: status, notes },
       { new: true }
     ).populate('candidateId', 'name email').populate('jobId', 'title');
@@ -70,15 +70,63 @@ export const updateApplicationStatus = async (req: Request, res: Response): Prom
 // GET analytics
 export const getApplicationAnalytics = async (req: Request, res: Response): Promise<void> => {
   try {
-    const total = await Application.countDocuments();
+    const total = await Application.countDocuments({ isDeleted: false });
     const byStatus = await Application.aggregate([
+      { $match: { isDeleted: false } },
       { $group: { _id: '$status', count: { $sum: 1 } } }
     ]);
     const byMonth = await Application.aggregate([
+      { $match: { isDeleted: false } },
       { $group: { _id: { $month: '$appliedDate' }, count: { $sum: 1 } } },
       { $sort: { '_id': 1 } }
     ]);
     res.json({ total, byStatus, byMonth });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// DELETE application (soft delete)
+export const deleteApplication = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const application = await Application.findByIdAndUpdate(req.params.id, { isDeleted: true }, { new: true });
+    if (!application) { res.status(404).json({ message: 'Application not found' }); return; }
+    res.json({ message: 'Application moved to recycle bin' });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// GET deleted applications
+export const getDeletedApplications = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const applications = await Application.find({ isDeleted: true })
+      .populate('candidateId', 'name email')
+      .populate('jobId', 'title')
+      .sort({ updatedAt: -1 });
+    res.json(applications);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// PUT restore application
+export const restoreApplication = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const application = await Application.findByIdAndUpdate(req.params.id, { isDeleted: false }, { new: true });
+    if (!application) { res.status(404).json({ message: 'Application not found' }); return; }
+    res.json(application);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// DELETE permanent application
+export const permanentDeleteApplication = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const application = await Application.findByIdAndDelete(req.params.id);
+    if (!application) { res.status(404).json({ message: 'Application not found' }); return; }
+    res.json({ message: 'Application permanently removed' });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

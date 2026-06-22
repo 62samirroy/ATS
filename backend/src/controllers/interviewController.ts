@@ -7,7 +7,7 @@ import { io } from '../server';
 export const getInterviews = async (req: Request, res: Response): Promise<void> => {
   try {
     const { interviewerId, candidateId, date } = req.query;
-    const filter: any = {};
+    const filter: any = { isDeleted: false };
     if (interviewerId) filter.interviewerId = interviewerId;
     if (candidateId) filter.candidateId = candidateId;
     if (date) {
@@ -48,7 +48,7 @@ export const scheduleInterview = async (req: Request, res: Response): Promise<vo
 // PUT update interview
 export const updateInterview = async (req: Request, res: Response): Promise<void> => {
   try {
-    const interview = await Interview.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const interview = await Interview.findOneAndUpdate({ _id: req.params.id, isDeleted: false }, req.body, { new: true });
     if (!interview) { res.status(404).json({ message: 'Interview not found' }); return; }
     if (req.body.result) {
       io.emit('interviewResult', { interviewId: interview._id, result: req.body.result });
@@ -82,10 +82,68 @@ export const getTodaysInterviews = async (req: Request, res: Response): Promise<
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
-    const interviews = await Interview.find({ scheduledDate: { $gte: today, $lt: tomorrow }, status: 'Scheduled' })
+    const interviews = await Interview.find({ scheduledDate: { $gte: today, $lt: tomorrow }, status: 'Scheduled', isDeleted: false })
       .populate('candidateId', 'name email')
       .populate('interviewerId', 'name');
     res.json(interviews);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// DELETE interview (soft delete)
+export const deleteInterview = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const interview = await Interview.findByIdAndUpdate(req.params.id, { isDeleted: true }, { new: true });
+    if (!interview) { res.status(404).json({ message: 'Interview not found' }); return; }
+    res.json({ message: 'Interview moved to recycle bin' });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// GET deleted interviews
+export const getDeletedInterviews = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const interviews = await Interview.find({ isDeleted: true })
+      .populate('candidateId', 'name email')
+      .sort({ updatedAt: -1 });
+    res.json(interviews);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// PUT restore interview
+export const restoreInterview = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const interview = await Interview.findByIdAndUpdate(req.params.id, { isDeleted: false }, { new: true });
+    if (!interview) { res.status(404).json({ message: 'Interview not found' }); return; }
+    res.json(interview);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// DELETE permanent interview
+export const permanentDeleteInterview = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const interview = await Interview.findByIdAndDelete(req.params.id);
+    if (!interview) { res.status(404).json({ message: 'Interview not found' }); return; }
+    res.json({ message: 'Interview permanently removed' });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// GET interview analytics
+export const getInterviewAnalytics = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const total = await Interview.countDocuments({ isDeleted: false });
+    const scheduled = await Interview.countDocuments({ status: 'Scheduled', isDeleted: false });
+    const completed = await Interview.countDocuments({ status: 'Completed', isDeleted: false });
+    const cancelled = await Interview.countDocuments({ status: { $in: ['Cancelled', 'No Show'] }, isDeleted: false });
+    res.json({ total, scheduled, completed, cancelled });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

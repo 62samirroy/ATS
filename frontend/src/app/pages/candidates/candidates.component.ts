@@ -5,6 +5,8 @@ import { FormsModule } from '@angular/forms';
 import { CandidateService } from '../../services/candidate.service';
 import { AiService } from '../../services/ai.service';
 import { JobService } from '../../services/job.service';
+import { ToastService } from '../../services/toast.service';
+import { CandidateSettingsService, CandidateSetting } from '../../services/candidate-settings.service';
 
 @Component({
   selector: 'app-candidates',
@@ -17,10 +19,14 @@ import { JobService } from '../../services/job.service';
           <h1 class="page-title">Candidate Management</h1>
           <p class="page-subtitle">View, filter and rank candidates using AI</p>
         </div>
-        <button (click)="showAddModal = true" id="btn-add-candidate" class="btn-primary">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-          Add Candidate
-        </button>
+        <div style="display:flex;gap:0.5rem">
+          <a routerLink="/candidates/recycle-bin" class="btn-secondary" style="display:inline-flex;align-items:center;gap:6px">
+            <i class="fa-solid fa-trash-can" style="color:#DC2626"></i> Recycle Bin
+          </a>
+          <button (click)="showAddModal = true" id="btn-add-candidate" class="btn-primary">
+            <i class="fa-solid fa-plus" style="font-size:0.75rem"></i> Add Candidate
+          </button>
+        </div>
       </div>
 
       <!-- Main Table Card -->
@@ -32,11 +38,20 @@ import { JobService } from '../../services/job.service';
             <svg class="search-icon-inner" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             <input id="candidate-search" type="text" [(ngModel)]="searchQuery" (input)="filterCandidates()" placeholder="Search candidates...">
           </div>
+          <select [(ngModel)]="statusFilter" (change)="filterCandidates()" class="form-select" style="width:auto;min-width:130px">
+            <option value="">All Statuses</option>
+            <option *ngFor="let s of candidateStatuses" [value]="s.name">{{ s.name }}</option>
+          </select>
+          <select [(ngModel)]="sourceFilter" (change)="filterCandidates()" class="form-select" style="width:auto;min-width:130px">
+            <option value="">All Sources</option>
+            <option *ngFor="let s of candidateSources" [value]="s.name">{{ s.name }}</option>
+          </select>
           <select id="job-rank-filter" [(ngModel)]="selectedJob" (change)="filterCandidates()" class="form-select" style="width:auto;min-width:160px">
-            <option value="">All Candidates</option>
+            <option value="">AI Job Match (All)</option>
             <option *ngFor="let job of jobs" [value]="job._id">{{ job.title }}</option>
           </select>
           <select [(ngModel)]="sortBy" (change)="filterCandidates()" class="form-select" style="width:auto;min-width:130px">
+            <option value="newest">Sort: Newest First</option>
             <option value="aiScore">Sort: AI Score</option>
             <option value="name">Sort: Name</option>
             <option value="experience">Sort: Experience</option>
@@ -56,6 +71,7 @@ import { JobService } from '../../services/job.service';
                 <th style="width:36px"><input type="checkbox" style="width:14px;height:14px;accent-color:var(--primary);cursor:pointer"></th>
                 <th>Candidate</th>
                 <th>Experience</th>
+                <th>Status & Source</th>
                 <th>Skills</th>
                 <th>AI Score</th>
                 <th>AI Summary</th>
@@ -66,7 +82,7 @@ import { JobService } from '../../services/job.service';
               <tr *ngIf="filteredCandidates.length === 0">
                 <td colspan="7" style="text-align:center;padding:3rem;color:var(--muted)">No candidates found</td>
               </tr>
-              <tr *ngFor="let c of filteredCandidates">
+              <tr *ngFor="let c of pagedCandidates">
                 <td><input type="checkbox" style="width:14px;height:14px;accent-color:var(--primary);cursor:pointer"></td>
                 <td>
                   <div style="display:flex;align-items:center;gap:0.625rem">
@@ -78,6 +94,13 @@ import { JobService } from '../../services/job.service';
                   </div>
                 </td>
                 <td style="font-size:0.8125rem;color:var(--text)">{{ c.experience }} yrs</td>
+                <td>
+                  <div style="display:flex;flex-direction:column;gap:4px">
+                    <span *ngIf="c.status" class="badge" [style.background]="getStatusColor(c.status) + '20'" [style.color]="getStatusColor(c.status)" style="border:1px solid transparent;align-self:flex-start">{{ c.status }}</span>
+                    <span *ngIf="c.source" style="font-size:0.6875rem;color:var(--muted)"><i class="fa-solid fa-share-nodes" style="margin-right:4px;font-size:0.6rem"></i>{{ c.source }}</span>
+                    <span *ngIf="!c.status && !c.source" style="color:var(--muted)">—</span>
+                  </div>
+                </td>
                 <td>
                   <div style="display:flex;flex-wrap:wrap;gap:3px">
                     <span *ngFor="let skill of (c.skills || []).slice(0,3)" class="badge badge-blue" style="font-size:0.6rem;padding:1px 6px">{{ skill }}</span>
@@ -106,6 +129,12 @@ import { JobService } from '../../services/job.service';
                       <i *ngIf="rankingId !== c._id" class="fa-solid fa-microchip" style="font-size:0.65rem"></i>
                       <i *ngIf="rankingId === c._id" class="fa-solid fa-spinner" style="font-size:0.65rem;animation:spin 1s linear infinite"></i>
                     </button>
+                    <button (click)="openEditModal(c)" class="btn-icon btn-icon-primary" title="Edit Candidate">
+                      <i class="fa-regular fa-pen-to-square"></i>
+                    </button>
+                    <button (click)="confirmDelete(c)" class="btn-icon btn-icon-danger" title="Delete Candidate">
+                      <i class="fa-regular fa-trash-can"></i>
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -114,17 +143,23 @@ import { JobService } from '../../services/job.service';
         </div>
 
         <!-- Pagination -->
-        <div class="pagination-bar">
-          <span class="pagination-info">Showing 1–{{ filteredCandidates.length }} of {{ filteredCandidates.length }} rows</span>
+        <div *ngIf="!loading && filteredCandidates.length>0" class="pagination-bar">
+          <span class="pagination-info">Showing {{ pageStart }}–{{ pageEnd }} of {{ filteredCandidates.length }} rows</span>
           <div style="display:flex;align-items:center;gap:0.5rem">
-            <select class="page-size-select">
-              <option>10 / page</option><option>20 / page</option><option>50 / page</option>
+            <select class="page-size-select" [(ngModel)]="pageSize" (change)="onPageSizeChange()">
+              <option [value]="10">10 / page</option>
+              <option [value]="20">20 / page</option>
+              <option [value]="50">50 / page</option>
             </select>
           </div>
           <div class="pagination-controls">
-            <button class="page-btn" disabled><i class="fa-solid fa-chevron-left" style="font-size:0.6rem"></i>&nbsp;Previous</button>
-            <span style="font-size:0.8125rem;color:var(--muted);padding:0 0.25rem">Page 1 of 1</span>
-            <button class="page-btn" disabled>Next&nbsp;<i class="fa-solid fa-chevron-right" style="font-size:0.6rem"></i></button>
+            <button class="page-btn" (click)="goToPage(currentPage-1)" [disabled]="currentPage===1">
+              <i class="fa-solid fa-chevron-left" style="font-size:0.6rem"></i>&nbsp;Previous
+            </button>
+            <span style="font-size:0.8125rem;color:var(--muted);padding:0 0.25rem">Page {{ currentPage }} of {{ totalPages }}</span>
+            <button class="page-btn" (click)="goToPage(currentPage+1)" [disabled]="currentPage===totalPages">
+              Next&nbsp;<i class="fa-solid fa-chevron-right" style="font-size:0.6rem"></i>
+            </button>
           </div>
         </div>
       </div>
@@ -133,7 +168,7 @@ import { JobService } from '../../services/job.service';
     <!-- Add Candidate Modal -->
     <div *ngIf="showAddModal" class="modal-overlay" (click)="showAddModal=false">
       <div class="modal-box" (click)="$event.stopPropagation()">
-        <h3 style="font-size:1.0625rem;font-weight:700;color:var(--text);margin-bottom:1.25rem">Add Candidate</h3>
+        <h3 style="font-size:1.0625rem;font-weight:700;color:var(--text);margin-bottom:1.25rem">{{ isEdit ? 'Edit Candidate' : 'Add Candidate' }}</h3>
         <div class="space-y-3">
           <div class="form-group">
             <label class="form-label">Full Name *</label>
@@ -151,14 +186,44 @@ import { JobService } from '../../services/job.service';
             <label class="form-label">Years of Experience</label>
             <input type="number" [(ngModel)]="newCandidate.experience" class="form-input" min="0">
           </div>
+          <div style="display:flex;gap:1rem">
+            <div class="form-group" style="flex:1">
+              <label class="form-label">Status</label>
+              <select [(ngModel)]="newCandidate.status" class="form-select">
+                <option value="">Select Status</option>
+                <option *ngFor="let s of candidateStatuses" [value]="s.name">{{ s.name }}</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:1">
+              <label class="form-label">Source</label>
+              <select [(ngModel)]="newCandidate.source" class="form-select">
+                <option value="">Select Source</option>
+                <option *ngFor="let s of candidateSources" [value]="s.name">{{ s.name }}</option>
+              </select>
+            </div>
+          </div>
           <div class="form-group">
             <label class="form-label">Skills (comma-separated)</label>
             <input type="text" [(ngModel)]="newCandidate.skillsStr" class="form-input" placeholder="React, Node.js, TypeScript">
           </div>
           <div class="flex gap-3 mt-4">
-            <button (click)="addCandidate()" class="btn-primary flex-1" [disabled]="!newCandidate.name || !newCandidate.email">Add Candidate</button>
+            <button (click)="saveCandidate()" class="btn-primary flex-1" [disabled]="!newCandidate.name || !newCandidate.email">
+              {{ isEdit ? (saving ? 'Updating...' : 'Update') : (saving ? 'Adding...' : 'Add') }} Candidate
+            </button>
             <button (click)="showAddModal=false" class="btn-secondary">Cancel</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Soft Delete Confirmation Modal -->
+    <div *ngIf="showDeleteModal" class="modal-overlay" (click)="showDeleteModal=false">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+        <h3 class="text-lg font-bold mb-2 text-brand-text">Confirm Delete</h3>
+        <p class="text-brand-muted mb-4">Are you sure you want to delete '{{ candidateToDelete?.name }}'? They will be moved to the Recycle Bin.</p>
+        <div class="flex gap-3">
+          <button (click)="executeDelete()" class="btn-danger flex-1" style="background:#DC2626;color:white">Delete</button>
+          <button (click)="showDeleteModal=false" class="btn-secondary">Cancel</button>
         </div>
       </div>
     </div>
@@ -167,45 +232,97 @@ import { JobService } from '../../services/job.service';
 export class CandidatesComponent implements OnInit {
   candidates: any[] = [];
   filteredCandidates: any[] = [];
+  pagedCandidates: any[] = [];
   jobs: any[] = [];
   loading = true;
+  saving = false;
   searchQuery = '';
   selectedJob = '';
-  sortBy = 'aiScore';
+  statusFilter = '';
+  sourceFilter = '';
+  sortBy = 'newest';
   rankingId = '';
+
+  candidateStatuses: CandidateSetting[] = [];
+  candidateSources: CandidateSetting[] = [];
+
+  // Pagination
+  pageSize = 10;
+  currentPage = 1;
+  get totalPages() { return Math.max(1, Math.ceil(this.filteredCandidates.length / this.pageSize)); }
+  get pageStart() { return this.filteredCandidates.length===0?0:(this.currentPage-1)*this.pageSize+1; }
+  get pageEnd()   { return Math.min(this.currentPage*this.pageSize, this.filteredCandidates.length); }
+
   showAddModal = false;
-  newCandidate = { name: '', email: '', phone: '', experience: 0, skillsStr: '' };
+  isEdit = false;
+  editingId: string | null = null;
+  newCandidate: any = { name: '', email: '', phone: '', experience: 0, skillsStr: '', status: '', source: '' };
+
+  showDeleteModal = false;
+  candidateToDelete: any = null;
 
   constructor(
     private candidateService: CandidateService,
     private aiService: AiService,
-    private jobService: JobService
+    private jobService: JobService,
+    private toastService: ToastService,
+    private candidateSettingsService: CandidateSettingsService
   ) {}
 
   ngOnInit() {
     this.loadCandidates();
     this.jobService.getJobs({ status: 'Published' }).subscribe({ next: j => this.jobs = j, error: () => {} });
+    this.candidateSettingsService.getSettings().subscribe(settings => {
+      this.candidateStatuses = settings.filter(s => s.type === 'status');
+      this.candidateSources = settings.filter(s => s.type === 'source');
+    });
   }
 
   loadCandidates() {
     this.loading = true;
     this.candidateService.getCandidates().subscribe({
-      next: c => { this.candidates = c; this.filteredCandidates = c; this.loading = false; },
-      error: () => { this.candidates = this.getMockCandidates(); this.filteredCandidates = this.candidates; this.loading = false; }
+      next: c => { this.candidates = c; this.applyFilter(); this.loading = false; },
+      error: () => { this.candidates = this.getMockCandidates(); this.applyFilter(); this.loading = false; }
     });
   }
 
   filterCandidates() {
-    let result = this.candidates.filter(c =>
-      !this.searchQuery ||
-      c.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-      (c.email || '').toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-      (c.skills || []).some((s: string) => s.toLowerCase().includes(this.searchQuery.toLowerCase()))
-    );
+    let result = this.candidates.filter(c => {
+      const matchesSearch = !this.searchQuery ||
+        c.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+        (c.email || '').toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+        (c.skills || []).some((s: string) => s.toLowerCase().includes(this.searchQuery.toLowerCase()));
+        
+      const matchesStatus = !this.statusFilter || c.status === this.statusFilter;
+      const matchesSource = !this.sourceFilter || c.source === this.sourceFilter;
+      
+      return matchesSearch && matchesStatus && matchesSource;
+    });
     if (this.sortBy === 'aiScore') result = result.sort((a, b) => (b.aiScore || 0) - (a.aiScore || 0));
     else if (this.sortBy === 'experience') result = result.sort((a, b) => b.experience - a.experience);
-    else result = result.sort((a, b) => a.name.localeCompare(b.name));
+    else if (this.sortBy === 'name') result = result.sort((a, b) => a.name.localeCompare(b.name));
+    else result = result.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    
     this.filteredCandidates = result;
+    this.currentPage = 1;
+    this.updatePage();
+  }
+
+  updatePage() {
+    const start = (this.currentPage - 1) * this.pageSize;
+    this.pagedCandidates = this.filteredCandidates.slice(start, start + this.pageSize);
+  }
+
+  goToPage(page: number) {
+    if (page < 1 || page > this.totalPages) return;
+    this.currentPage = page;
+    this.updatePage();
+  }
+
+  onPageSizeChange() { this.currentPage = 1; this.updatePage(); }
+
+  applyFilter() {
+    this.filterCandidates();
   }
 
   rankCandidate(candidate: any) {
@@ -216,28 +333,103 @@ export class CandidatesComponent implements OnInit {
         candidate.aiScore = res.finalScore;
         candidate.aiSummary = res.aiSummary;
         this.rankingId = '';
+        this.toastService.success(`AI Ranked ${candidate.name} successfully`);
         this.filterCandidates();
       },
       error: () => {
-        // Mock response
         candidate.aiScore = Math.floor(Math.random() * 30) + 70;
         candidate.aiSummary = `Candidate has strong background in ${(candidate.skills || []).slice(0, 2).join(' and ')}. Recommended for Technical Interview.`;
         this.rankingId = '';
+        this.toastService.success(`AI Ranked ${candidate.name} successfully (Mock)`);
         this.filterCandidates();
       }
     });
   }
 
-  addCandidate() {
+  openEditModal(c: any) {
+    this.isEdit = true;
+    this.editingId = c._id;
+    this.newCandidate = { ...c, skillsStr: (c.skills||[]).join(', ') };
+    this.showAddModal = true;
+  }
+
+  saveCandidate() {
+    this.saving = true;
     const data = {
       ...this.newCandidate,
-      skills: this.newCandidate.skillsStr.split(',').map(s => s.trim()).filter(Boolean)
+      skills: this.newCandidate.skillsStr.split(',').map((s: string) => s.trim()).filter(Boolean)
     };
-    this.candidateService.createCandidate(data).subscribe({
-      next: (c) => { this.candidates.unshift(c); this.filterCandidates(); this.showAddModal = false; },
-      error: () => { this.showAddModal = false; }
+
+    if (this.isEdit && this.editingId) {
+      if ((this.candidateService as any).updateCandidate) {
+        this.candidateService.updateCandidate(this.editingId, data).subscribe({
+          next: (c) => {
+            const idx = this.candidates.findIndex(x => x._id === this.editingId);
+            if (idx !== -1) this.candidates[idx] = c;
+            this.toastService.success('Candidate updated successfully');
+            this.applyFilter();
+            this.resetModal();
+          },
+          error: () => {
+            const idx = this.candidates.findIndex(x => x._id === this.editingId);
+            if (idx !== -1) this.candidates[idx] = { ...this.candidates[idx], ...data };
+            this.toastService.error('Failed to update candidate, used mock update');
+            this.applyFilter();
+            this.resetModal();
+          }
+        });
+      }
+    } else {
+      this.candidateService.createCandidate(data).subscribe({
+        next: (c) => { 
+          this.candidates.unshift(c); 
+          this.toastService.success('Candidate added successfully');
+          this.applyFilter(); 
+          this.resetModal(); 
+        },
+        error: () => { 
+          const mock = { _id: Math.random().toString(), createdAt: new Date().toISOString(), ...data };
+          this.candidates.unshift(mock);
+          this.toastService.success('Candidate added successfully (Mock)');
+          this.applyFilter();
+          this.resetModal(); 
+        }
+      });
+    }
+  }
+
+  resetModal() {
+    this.showAddModal = false;
+    this.saving = false;
+    this.isEdit = false;
+    this.editingId = null;
+    this.newCandidate = { name: '', email: '', phone: '', experience: 0, skillsStr: '', status: '', source: '' };
+  }
+
+  confirmDelete(c: any) {
+    this.candidateToDelete = c;
+    this.showDeleteModal = true;
+  }
+
+  executeDelete() {
+    if (!this.candidateToDelete) return;
+    const id = this.candidateToDelete._id;
+    this.candidateService.deleteCandidate(id).subscribe({
+      next: () => {
+        this.candidates = this.candidates.filter(c => c._id !== id);
+        this.toastService.success('Candidate moved to Recycle Bin');
+        this.applyFilter();
+        this.showDeleteModal = false;
+        this.candidateToDelete = null;
+      },
+      error: () => {
+        this.candidates = this.candidates.filter(c => c._id !== id);
+        this.toastService.error('Candidate moved to Recycle Bin (Mock)');
+        this.applyFilter();
+        this.showDeleteModal = false;
+        this.candidateToDelete = null;
+      }
     });
-    this.newCandidate = { name: '', email: '', phone: '', experience: 0, skillsStr: '' };
   }
 
   getScoreColor(score: number): string {
@@ -250,6 +442,11 @@ export class CandidatesComponent implements OnInit {
     if (score >= 80) return 'linear-gradient(90deg, #10b981, #34d399)';
     if (score >= 60) return 'linear-gradient(90deg, #f59e0b, #fbbf24)';
     return 'linear-gradient(90deg, #ef4444, #f87171)';
+  }
+
+  getStatusColor(statusName: string): string {
+    const status = this.candidateStatuses.find(s => s.name === statusName);
+    return status?.color || '#3B82F6';
   }
 
   getMockCandidates() {

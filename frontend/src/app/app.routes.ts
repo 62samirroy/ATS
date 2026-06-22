@@ -27,8 +27,21 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/dashboard/dashboard.component').then(m => m.DashboardComponent)
       },
       {
+        path: 'jobs/dashboard',
+        loadComponent: () => import('./pages/jobs/jobs-dashboard.component').then(m => m.JobsDashboardComponent)
+      },
+      {
+        path: 'jobs/recycle-bin',
+        loadComponent: () => import('./pages/jobs/jobs-recycle-bin.component').then(m => m.JobsRecycleBinComponent)
+      },
+      {
         path: 'jobs',
         loadComponent: () => import('./pages/jobs/jobs.component').then(m => m.JobsComponent)
+      },
+      {
+        path: 'jobs/settings',
+        canActivate: [roleGuard('Super Admin')],
+        loadComponent: () => import('./pages/jobs/job-settings.component').then(m => m.JobSettingsComponent)
       },
       {
         path: 'jobs/create',
@@ -41,9 +54,33 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/jobs/job-form.component').then(m => m.JobFormComponent)
       },
       {
+        path: 'candidates/dashboard',
+        loadComponent: () => import('./pages/candidates/candidates-dashboard.component').then(m => m.CandidatesDashboardComponent)
+      },
+      {
+        path: 'candidates/recycle-bin',
+        loadComponent: () => import('./pages/candidates/candidates-recycle-bin.component').then(m => m.CandidatesRecycleBinComponent)
+      },
+      {
+        path: 'candidates/settings',
+        loadComponent: () => import('./pages/candidates/candidate-settings.component').then(m => m.CandidateSettingsComponent)
+      },
+      {
         path: 'candidates',
         canActivate: [roleGuard('HR Manager', 'Super Admin', 'Interviewer')],
         loadComponent: () => import('./pages/candidates/candidates.component').then(m => m.CandidatesComponent)
+      },
+      {
+        path: 'applications/dashboard',
+        loadComponent: () => import('./pages/applications/applications-dashboard.component').then(m => m.ApplicationsDashboardComponent)
+      },
+      {
+        path: 'applications/recycle-bin',
+        loadComponent: () => import('./pages/applications/applications-recycle-bin.component').then(m => m.ApplicationsRecycleBinComponent)
+      },
+      {
+        path: 'applications/settings',
+        loadComponent: () => import('./pages/applications/application-settings.component').then(m => m.ApplicationSettingsComponent)
       },
       {
         path: 'applications',
@@ -52,6 +89,18 @@ export const routes: Routes = [
       {
         path: 'my-applications',
         loadComponent: () => import('./pages/applications/applications.component').then(m => m.ApplicationsComponent)
+      },
+      {
+        path: 'interviews/dashboard',
+        loadComponent: () => import('./pages/interviews/interviews-dashboard.component').then(m => m.InterviewsDashboardComponent)
+      },
+      {
+        path: 'interviews/recycle-bin',
+        loadComponent: () => import('./pages/interviews/interviews-recycle-bin.component').then(m => m.InterviewsRecycleBinComponent)
+      },
+      {
+        path: 'interviews/settings',
+        loadComponent: () => import('./pages/interviews/interview-settings.component').then(m => m.InterviewSettingsComponent)
       },
       {
         path: 'interviews',

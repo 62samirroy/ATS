@@ -22,9 +22,9 @@ import { JobService } from '../../services/job.service';
           <button class="btn-primary" style="gap:0.375rem">
             <i class="fa-solid fa-upload" style="font-size:0.75rem"></i> Import
           </button>
-          <button class="btn-secondary" style="color:var(--danger);border-color:rgba(220,38,38,0.25)">
+          <a routerLink="/applications/recycle-bin" class="btn-secondary" style="color:var(--danger);border-color:rgba(220,38,38,0.25);display:flex;align-items:center;gap:6px">
             <i class="fa-solid fa-trash-can" style="font-size:0.75rem"></i> Recycle Bin
-          </button>
+          </a>
         </div>
       </div>
 
@@ -111,7 +111,7 @@ import { JobService } from '../../services/job.service';
                 <th>Status</th>
                 <th>Meeting</th>
                 <th>Rating</th>
-                <th style="width:40px"></th>
+                <th style="width:80px;text-align:center">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -148,9 +148,14 @@ import { JobService } from '../../services/job.service';
                   </div>
                 </td>
                 <td>
-                  <button style="background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;border-radius:4px" onmouseenter="this.style.background='#F1F5F9'" onmouseleave="this.style.background='none'">
-                    <i class="fa-solid fa-ellipsis-vertical" style="font-size:0.875rem"></i>
-                  </button>
+                  <div style="display:flex;align-items:center;justify-content:center;gap:4px">
+                    <button (click)="openEditModal(app)" class="btn-icon btn-icon-primary" title="Edit Application">
+                      <i class="fa-regular fa-pen-to-square"></i>
+                    </button>
+                    <button (click)="confirmDelete(app)" class="btn-icon btn-icon-danger" title="Delete Application">
+                      <i class="fa-regular fa-trash-can"></i>
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -168,7 +173,10 @@ import { JobService } from '../../services/job.service';
                   <div style="font-size:0.6875rem;color:var(--muted)">{{ app.candidateId?.phone||app.candidateId?.email }}</div>
                 </div>
               </div>
-              <span [class]="getStatusBadge(app.status)">{{ app.status }}</span>
+              <div style="display:flex;gap:4px">
+                <button (click)="openEditModal(app)" class="btn-icon btn-icon-primary btn-sm"><i class="fa-regular fa-pen-to-square"></i></button>
+                <button (click)="confirmDelete(app)" class="btn-icon btn-icon-danger btn-sm"><i class="fa-regular fa-trash-can"></i></button>
+              </div>
             </div>
             <div style="padding:0.5rem;background:var(--bg);border-radius:6px;margin-bottom:0.625rem">
               <div style="font-size:0.75rem;font-weight:600;color:var(--primary);margin-bottom:2px">{{ app.appId }}</div>
@@ -207,8 +215,12 @@ import { JobService } from '../../services/job.service';
               <div *ngFor="let app of getByStage(stage.key)" class="pipeline-card">
                 <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.375rem">
                   <div class="avatar" style="width:26px;height:26px;font-size:0.6875rem">{{ app.candidateId?.name?.charAt(0)||'?' }}</div>
-                  <div style="flex:1;min-width:0">
+                  <div style="flex:1;min-width:0;display:flex;justify-content:space-between;align-items:center">
                     <p style="font-size:0.8125rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0">{{ app.candidateId?.name||'Candidate' }}</p>
+                    <div style="display:flex;gap:2px">
+                      <button (click)="openEditModal(app)" style="background:none;border:none;color:var(--primary);cursor:pointer"><i class="fa-solid fa-pen" style="font-size:0.6rem"></i></button>
+                      <button (click)="confirmDelete(app)" style="background:none;border:none;color:var(--danger);cursor:pointer"><i class="fa-solid fa-trash" style="font-size:0.6rem"></i></button>
+                    </div>
                   </div>
                 </div>
                 <p style="font-size:0.6875rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:0.375rem">{{ app.jobId?.title||'Job' }}</p>
@@ -243,6 +255,46 @@ import { JobService } from '../../services/job.service';
         </div>
       </div>
     </div>
+
+    <!-- Edit Modal -->
+    <div *ngIf="showEditModal" class="modal-overlay" (click)="showEditModal=false">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+        <h3 class="text-lg font-bold mb-4">Edit Application</h3>
+        <div class="space-y-4">
+          <div class="form-group">
+            <label class="form-label">Status / Stage</label>
+            <select [(ngModel)]="currentEdit.status" class="form-select">
+              <option *ngFor="let s of allStatuses" [value]="s">{{ s }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Meeting Status</label>
+            <select [(ngModel)]="currentEdit.meetingStatus" class="form-select">
+              <option [ngValue]="null">None</option>
+              <option value="Pending">Pending</option>
+              <option value="Scheduled">Scheduled</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+          <div class="flex gap-3 mt-6">
+            <button (click)="saveEdit()" class="btn-primary flex-1">Update</button>
+            <button (click)="showEditModal=false" class="btn-secondary">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Soft Delete Confirmation Modal -->
+    <div *ngIf="showDeleteModal" class="modal-overlay" (click)="showDeleteModal=false">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+        <h3 class="text-lg font-bold mb-2 text-brand-text">Confirm Delete</h3>
+        <p class="text-brand-muted mb-4">Are you sure you want to delete this application for '{{ appToDelete?.candidateId?.name }}'? They will be moved to the Recycle Bin.</p>
+        <div class="flex gap-3">
+          <button (click)="executeDelete()" class="btn-danger flex-1" style="background:#DC2626;color:white">Delete</button>
+          <button (click)="showDeleteModal=false" class="btn-secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
   `
 })
 export class ApplicationsComponent implements OnInit {
@@ -263,6 +315,11 @@ export class ApplicationsComponent implements OnInit {
   get totalPages() { return Math.max(1, Math.ceil(this.filteredApps.length / this.pageSize)); }
   get pageStart() { return this.filteredApps.length === 0 ? 0 : (this.currentPage - 1) * this.pageSize + 1; }
   get pageEnd() { return Math.min(this.currentPage * this.pageSize, this.filteredApps.length); }
+
+  showEditModal = false;
+  currentEdit: any = {};
+  showDeleteModal = false;
+  appToDelete: any = null;
 
   statCards = [
     { label: 'Total Applications', value: 33, icon: 'fa-solid fa-file-lines',      iconBg: '#EEF6FF', iconColor: '#1976D2' },
@@ -348,6 +405,59 @@ export class ApplicationsComponent implements OnInit {
       next: () => { app.status = status; this.applyFilter(); },
       error: () => { app.status = status; this.applyFilter(); }
     });
+  }
+
+  openEditModal(app: any) {
+    this.currentEdit = { ...app };
+    this.showEditModal = true;
+  }
+
+  saveEdit() {
+    this.appService.updateStatus(this.currentEdit._id, this.currentEdit.status, this.currentEdit.notes).subscribe({
+      next: () => {
+        const idx = this.applications.findIndex(a => a._id === this.currentEdit._id);
+        if (idx !== -1) this.applications[idx] = { ...this.applications[idx], ...this.currentEdit };
+        this.applyFilter();
+        this.showEditModal = false;
+      },
+      error: () => {
+        const idx = this.applications.findIndex(a => a._id === this.currentEdit._id);
+        if (idx !== -1) this.applications[idx] = { ...this.applications[idx], ...this.currentEdit };
+        this.applyFilter();
+        this.showEditModal = false;
+      }
+    });
+  }
+
+  confirmDelete(app: any) {
+    this.appToDelete = app;
+    this.showDeleteModal = true;
+  }
+
+  executeDelete() {
+    if (!this.appToDelete) return;
+    const id = this.appToDelete._id;
+    if ((this.appService as any).deleteApplication) {
+      this.appService.deleteApplication(id).subscribe({
+        next: () => {
+          this.applications = this.applications.filter(a => a._id !== id);
+          this.applyFilter();
+          this.showDeleteModal = false;
+          this.appToDelete = null;
+        },
+        error: () => {
+          this.applications = this.applications.filter(a => a._id !== id);
+          this.applyFilter();
+          this.showDeleteModal = false;
+          this.appToDelete = null;
+        }
+      });
+    } else {
+      this.applications = this.applications.filter(a => a._id !== id);
+      this.applyFilter();
+      this.showDeleteModal = false;
+      this.appToDelete = null;
+    }
   }
 
   getStatusBadge(s: string): string {

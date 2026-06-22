@@ -24,9 +24,14 @@ import { JobService } from '../../services/job.service';
           <h1 class="page-title">Job Management</h1>
           <p class="page-subtitle">Create, manage and track all job openings</p>
         </div>
-        <button (click)="showCreateModal = true" id="btn-new-job" class="btn-primary">
-          <i class="fa-solid fa-plus" style="font-size:0.75rem"></i> New Job
-        </button>
+        <div style="display:flex;gap:0.5rem">
+          <a routerLink="/jobs/recycle-bin" class="btn-secondary" style="display:inline-flex;align-items:center;gap:6px">
+            <i class="fa-solid fa-trash-can" style="color:#DC2626"></i> Recycle Bin
+          </a>
+          <button (click)="showCreateModal = true" id="btn-new-job" class="btn-primary">
+            <i class="fa-solid fa-plus" style="font-size:0.75rem"></i> New Job
+          </button>
+        </div>
       </div>
 
       <!-- Stat Cards -->
@@ -111,20 +116,26 @@ import { JobService } from '../../services/job.service';
                 <td><span class="badge badge-blue">{{ job.type }}</span></td>
                 <td style="font-size:0.8125rem;color:var(--muted)">{{ job.experience ? job.experience+'+ yrs' : '—' }}</td>
                 <td style="font-size:0.8125rem;font-weight:600;color:var(--text)">{{ getSalary(job)||'—' }}</td>
-                <td><span [class]="getStatusBadge(job.status)">{{ job.status }}</span></td>
+                <td>
+                  <select [ngModel]="job.status" (ngModelChange)="updateJobStatus(job, $event)" [class]="getStatusBadge(job.status)" style="appearance:none; border:none; outline:none; cursor:pointer;">
+                    <option value="Draft" class="text-black">Draft</option>
+                    <option value="Published" class="text-black">Published</option>
+                    <option value="Closed" class="text-black">Closed</option>
+                  </select>
+                </td>
                 <td>
                   <!-- Icon-only actions -->
                   <div style="display:flex;align-items:center;justify-content:center;gap:4px">
                     <a [routerLink]="['/jobs', job._id]" class="btn-icon btn-icon-primary" title="View Job">
                       <i class="fa-regular fa-eye"></i>
                     </a>
-                    <a [routerLink]="['/jobs', job._id, 'edit']" class="btn-icon btn-icon-primary" title="Edit Job">
+                    <button (click)="openEditModal(job)" class="btn-icon btn-icon-primary" title="Edit Job">
                       <i class="fa-regular fa-pen-to-square"></i>
-                    </a>
+                    </button>
                     <button *ngIf="job.status==='Draft'" (click)="publish(job)" class="btn-icon btn-icon-success" title="Publish Job">
                       <i class="fa-solid fa-upload" style="font-size:0.7rem"></i>
                     </button>
-                    <button (click)="deleteJob(job._id)" class="btn-icon btn-icon-danger" title="Delete Job">
+                    <button (click)="confirmDelete(job)" class="btn-icon btn-icon-danger" title="Delete Job">
                       <i class="fa-regular fa-trash-can"></i>
                     </button>
                   </div>
@@ -144,7 +155,11 @@ import { JobService } from '../../services/job.service';
                 <div style="font-weight:600;color:var(--text);font-size:0.875rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ job.title }}</div>
                 <div style="font-size:0.6875rem;color:var(--primary);font-weight:600;margin-top:1px">J-{{ job._id.toString().padStart(5,'0') }}</div>
               </div>
-              <span [class]="getStatusBadge(job.status)" style="flex-shrink:0">{{ job.status }}</span>
+              <select [ngModel]="job.status" (ngModelChange)="updateJobStatus(job, $event)" [class]="getStatusBadge(job.status)" style="flex-shrink:0; appearance:none; border:none; outline:none; cursor:pointer;">
+                <option value="Draft" class="text-black">Draft</option>
+                <option value="Published" class="text-black">Published</option>
+                <option value="Closed" class="text-black">Closed</option>
+              </select>
             </div>
             <div style="display:flex;align-items:center;gap:1rem;font-size:0.75rem;color:var(--muted);margin-bottom:0.5rem;flex-wrap:wrap">
               <span><i class="fa-solid fa-location-dot" style="margin-right:3px;color:var(--border)"></i>{{ job.location||'Remote' }}</span>
@@ -158,9 +173,9 @@ import { JobService } from '../../services/job.service';
             </div>
             <div style="display:flex;gap:0.375rem">
               <a [routerLink]="['/jobs', job._id]" class="btn-icon btn-icon-primary" title="View"><i class="fa-regular fa-eye"></i></a>
-              <a [routerLink]="['/jobs', job._id, 'edit']" class="btn-icon btn-icon-primary" title="Edit"><i class="fa-regular fa-pen-to-square"></i></a>
+              <button (click)="openEditModal(job)" class="btn-icon btn-icon-primary" title="Edit"><i class="fa-regular fa-pen-to-square"></i></button>
               <button *ngIf="job.status==='Draft'" (click)="publish(job)" class="btn-icon btn-icon-success" title="Publish"><i class="fa-solid fa-upload" style="font-size:0.7rem"></i></button>
-              <button (click)="deleteJob(job._id)" class="btn-icon btn-icon-danger" title="Delete"><i class="fa-regular fa-trash-can"></i></button>
+              <button (click)="confirmDelete(job)" class="btn-icon btn-icon-danger" title="Delete"><i class="fa-regular fa-trash-can"></i></button>
             </div>
           </div>
         </div>
@@ -191,7 +206,7 @@ import { JobService } from '../../services/job.service';
     <!-- Create Job Modal -->
     <div *ngIf="showCreateModal" class="modal-overlay" (click)="showCreateModal=false">
       <div class="modal-box" style="max-width:600px" (click)="$event.stopPropagation()">
-        <h3 class="text-lg font-bold mb-4">Create Job Posting</h3>
+        <h3 class="text-lg font-bold mb-4">{{ isEdit ? 'Edit Job Posting' : 'Create Job Posting' }}</h3>
         <div class="space-y-4">
           <!-- Basic Info -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -247,8 +262,17 @@ import { JobService } from '../../services/job.service';
           </div>
 
           <div class="form-group">
-            <label class="form-label">Required Skills (comma separated)</label>
-            <input type="text" [(ngModel)]="skillsInput" class="form-input" placeholder="e.g. React, Node.js, TypeScript">
+            <label class="form-label">Required Skills</label>
+            <div class="flex gap-2 mb-3">
+              <input type="text" [(ngModel)]="skillsInput" class="form-input flex-1" placeholder="e.g. React, TypeScript..." (keydown.enter)="addSkill($event)">
+              <button type="button" (click)="addSkill()" class="btn-primary btn-sm">Add</button>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <span *ngFor="let skill of newJob.skills; let i = index" class="badge badge-purple flex items-center gap-1.5">
+                {{ skill }}
+                <button type="button" (click)="removeSkill(i)" class="hover:text-red-400 transition-colors cursor-pointer" style="background:transparent;border:none;padding:0;font-size:1rem;line-height:1">×</button>
+              </span>
+            </div>
           </div>
 
           <div class="form-group">
@@ -257,11 +281,24 @@ import { JobService } from '../../services/job.service';
           </div>
           
           <div class="flex gap-3 mt-2">
-            <button (click)="createJob()" class="btn-primary flex-1" style="justify-content:center" [disabled]="!newJob.title || !newJob.description || creating">
-              {{ creating ? 'Creating...' : 'Create Job' }}
+            <button (click)="saveJob()" class="btn-primary flex-1" style="justify-content:center" [disabled]="!newJob.title || !newJob.description || creating">
+              <ng-container *ngIf="!isEdit">{{ creating ? 'Creating...' : 'Create Job' }}</ng-container>
+              <ng-container *ngIf="isEdit">{{ creating ? 'Updating...' : 'Update Job' }}</ng-container>
             </button>
             <button (click)="showCreateModal=false" class="btn-secondary" style="justify-content:center;flex:1">Cancel</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Soft Delete Confirmation Modal -->
+    <div *ngIf="showDeleteModal" class="modal-overlay" (click)="showDeleteModal=false">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+        <h3 class="text-lg font-bold mb-2 text-brand-text">Confirm Delete</h3>
+        <p class="text-brand-muted mb-4">Are you sure you want to delete '{{ jobToDelete?.title }}'? It will be moved to the Recycle Bin.</p>
+        <div class="flex gap-3">
+          <button (click)="executeDelete()" class="btn-danger flex-1" style="background:#DC2626;color:white">Delete</button>
+          <button (click)="showDeleteModal=false" class="btn-secondary">Cancel</button>
         </div>
       </div>
     </div>
@@ -287,16 +324,23 @@ export class JobsComponent implements OnInit {
   // Create Modal
   showCreateModal = false;
   creating = false;
+  isEdit = false;
+  editingJobId: string | null = null;
   skillsInput = '';
-  newJob = { 
+  newJob: any = { 
     title: '', 
     type: 'Full-time', 
     location: '', 
     experience: 0,
     status: 'Draft',
     salary: { min: null, max: null, currency: 'USD' },
-    description: '' 
+    description: '',
+    skills: []
   };
+
+  // Delete Modal
+  showDeleteModal = false;
+  jobToDelete: any = null;
 
   constructor(private jobService: JobService) {}
 
@@ -357,47 +401,122 @@ export class JobsComponent implements OnInit {
     });
   }
 
-  createJob() {
+  addSkill(event?: any) {
+    if (event) event.preventDefault();
+    if (this.skillsInput.trim()) {
+      if (!this.newJob.skills) this.newJob.skills = [];
+      this.newJob.skills.push(this.skillsInput.trim());
+      this.skillsInput = '';
+    }
+  }
+
+  removeSkill(index: number) {
+    if (this.newJob.skills) {
+      this.newJob.skills.splice(index, 1);
+    }
+  }
+
+  openEditModal(job: any) {
+    this.isEdit = true;
+    this.editingJobId = job._id;
+    this.newJob = JSON.parse(JSON.stringify(job));
+    if (!this.newJob.skills) this.newJob.skills = [];
+    this.skillsInput = '';
+    this.showCreateModal = true;
+  }
+
+  updateJobStatus(job: any, newStatus: string) {
+    job.status = newStatus;
+    if ((this.jobService as any).updateJob) {
+      (this.jobService as any).updateJob(job._id, { status: newStatus }).subscribe({
+        next: () => { this.applyFilter(); },
+        error: () => { this.applyFilter(); }
+      });
+    } else {
+      this.applyFilter();
+    }
+  }
+
+  saveJob() {
     this.creating = true;
-    const payload = {
-      ...this.newJob,
-      skills: this.skillsInput ? this.skillsInput.split(',').map(s => s.trim()) : []
-    };
+    const payload = { ...this.newJob };
     
-    this.jobService.createJob(payload).subscribe({
-      next: (j) => {
-        this.jobs.unshift(j);
-        this.applyFilter();
-        this.resetCreateModal();
-      },
-      error: () => {
-        // Fallback for mock
-        const mockJ = {
-          _id: Math.random().toString(),
-          ...payload
-        };
-        this.jobs.unshift(mockJ);
+    if (this.isEdit && this.editingJobId) {
+      if ((this.jobService as any).updateJob) {
+        (this.jobService as any).updateJob(this.editingJobId, payload).subscribe({
+          next: (j: any) => {
+            const idx = this.jobs.findIndex(x => x._id === this.editingJobId);
+            if(idx !== -1) this.jobs[idx] = j;
+            this.applyFilter();
+            this.resetCreateModal();
+          },
+          error: () => {
+            const idx = this.jobs.findIndex(x => x._id === this.editingJobId);
+            if(idx !== -1) this.jobs[idx] = { ...this.jobs[idx], ...payload };
+            this.applyFilter();
+            this.resetCreateModal();
+          }
+        });
+      } else {
+        const idx = this.jobs.findIndex(x => x._id === this.editingJobId);
+        if(idx !== -1) this.jobs[idx] = { ...this.jobs[idx], ...payload };
         this.applyFilter();
         this.resetCreateModal();
       }
-    });
+    } else {
+      this.jobService.createJob(payload).subscribe({
+        next: (j) => {
+          this.jobs.unshift(j);
+          this.applyFilter();
+          this.resetCreateModal();
+        },
+        error: () => {
+          // Fallback for mock
+          const mockJ = {
+            _id: Math.random().toString(),
+            ...payload
+          };
+          this.jobs.unshift(mockJ);
+          this.applyFilter();
+          this.resetCreateModal();
+        }
+      });
+    }
   }
 
   resetCreateModal() {
     this.showCreateModal = false;
     this.creating = false;
+    this.isEdit = false;
+    this.editingJobId = null;
     this.skillsInput = '';
     this.newJob = { 
       title: '', type: 'Full-time', location: '', experience: 0, status: 'Draft', 
-      salary: { min: null, max: null, currency: 'USD' }, description: '' 
+      salary: { min: null, max: null, currency: 'USD' }, description: '', skills: [] 
     };
   }
 
-  deleteJob(id: string) {
-    if (!confirm('Are you sure you want to delete this job?')) return;
+  confirmDelete(job: any) {
+    this.jobToDelete = job;
+    this.showDeleteModal = true;
+  }
+
+  executeDelete() {
+    if (!this.jobToDelete) return;
+    const id = this.jobToDelete._id;
     this.jobService.deleteJob(id).subscribe({
-      next: () => { this.jobs = this.jobs.filter(j => j._id !== id); this.applyFilter(); },
-      error: () => { this.jobs = this.jobs.filter(j => j._id !== id); this.applyFilter(); }
+      next: () => { 
+        this.jobs = this.jobs.filter(j => j._id !== id); 
+        this.applyFilter(); 
+        this.showDeleteModal = false;
+        this.jobToDelete = null;
+      },
+      error: () => { 
+        this.jobs = this.jobs.filter(j => j._id !== id); 
+        this.applyFilter(); 
+        this.showDeleteModal = false;
+        this.jobToDelete = null;
+      }
     });
   }
 

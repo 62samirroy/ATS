@@ -6,7 +6,7 @@ import { AuthRequest } from '../middleware/auth';
 export const getJobs = async (req: Request, res: Response): Promise<void> => {
   try {
     const { status, companyId, search } = req.query;
-    const filter: any = {};
+    const filter: any = { isDeleted: false };
     if (status) filter.status = status;
     if (companyId) filter.companyId = companyId;
     if (search) filter.title = { $regex: search, $options: 'i' };
@@ -21,7 +21,7 @@ export const getJobs = async (req: Request, res: Response): Promise<void> => {
 // GET single job
 export const getJobById = async (req: Request, res: Response): Promise<void> => {
   try {
-    const job = await Job.findById(req.params.id).populate('createdBy', 'name email').populate('companyId');
+    const job = await Job.findOne({ _id: req.params.id, isDeleted: false }).populate('createdBy', 'name email').populate('companyId');
     if (!job) { res.status(404).json({ message: 'Job not found' }); return; }
     res.json(job);
   } catch (error: any) {
@@ -64,9 +64,9 @@ export const updateJob = async (req: Request, res: Response): Promise<void> => {
 // DELETE job
 export const deleteJob = async (req: Request, res: Response): Promise<void> => {
   try {
-    const job = await Job.findByIdAndDelete(req.params.id);
+    const job = await Job.findByIdAndUpdate(req.params.id, { isDeleted: true }, { new: true });
     if (!job) { res.status(404).json({ message: 'Job not found' }); return; }
-    res.json({ message: 'Job removed' });
+    res.json({ message: 'Job moved to recycle bin' });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
@@ -86,11 +86,43 @@ export const publishJob = async (req: Request, res: Response): Promise<void> => 
 // GET job analytics
 export const getJobAnalytics = async (req: Request, res: Response): Promise<void> => {
   try {
-    const total = await Job.countDocuments();
-    const published = await Job.countDocuments({ status: 'Published' });
-    const draft = await Job.countDocuments({ status: 'Draft' });
-    const closed = await Job.countDocuments({ status: 'Closed' });
+    const total = await Job.countDocuments({ isDeleted: false });
+    const published = await Job.countDocuments({ status: 'Published', isDeleted: false });
+    const draft = await Job.countDocuments({ status: 'Draft', isDeleted: false });
+    const closed = await Job.countDocuments({ status: 'Closed', isDeleted: false });
     res.json({ total, published, draft, closed });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// GET deleted jobs
+export const getDeletedJobs = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const jobs = await Job.find({ isDeleted: true }).populate('createdBy', 'name email').sort({ updatedAt: -1 });
+    res.json(jobs);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// PUT restore job
+export const restoreJob = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const job = await Job.findByIdAndUpdate(req.params.id, { isDeleted: false }, { new: true });
+    if (!job) { res.status(404).json({ message: 'Job not found' }); return; }
+    res.json(job);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// DELETE permanent job
+export const permanentDeleteJob = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const job = await Job.findByIdAndDelete(req.params.id);
+    if (!job) { res.status(404).json({ message: 'Job not found' }); return; }
+    res.json({ message: 'Job permanently removed' });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

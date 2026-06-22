@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { InterviewService } from '../../services/interview.service';
 import { CandidateService } from '../../services/candidate.service';
 import { JobService } from '../../services/job.service';
+import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-interviews',
@@ -18,10 +19,14 @@ import { JobService } from '../../services/job.service';
           <h1 class="page-title">Interview Management</h1>
           <p class="page-subtitle">Schedule, track and manage all interviews</p>
         </div>
-        <button (click)="showScheduleModal = true" id="btn-schedule" class="btn-primary">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-          Schedule Interview
-        </button>
+        <div style="display:flex;gap:0.5rem">
+          <a routerLink="/interviews/recycle-bin" class="btn-secondary" style="display:inline-flex;align-items:center;gap:6px">
+            <i class="fa-solid fa-trash-can" style="color:#DC2626"></i> Recycle Bin
+          </a>
+          <button (click)="openScheduleModal()" id="btn-schedule" class="btn-primary">
+            <i class="fa-solid fa-plus" style="font-size:0.75rem"></i> Schedule Interview
+          </button>
+        </div>
       </div>
 
       <!-- Stat Cards -->
@@ -102,7 +107,7 @@ import { JobService } from '../../services/job.service';
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let iv of filteredInterviews">
+              <tr *ngFor="let iv of pagedInterviews">
                 <td><input type="checkbox" style="width:14px;height:14px;accent-color:var(--primary);cursor:pointer"></td>
                 <td>
                   <div style="display:flex;align-items:center;gap:0.5rem">
@@ -133,6 +138,12 @@ import { JobService } from '../../services/job.service';
                     <button *ngIf="iv.meetingLink || iv.type === 'Video' || iv.type === 'Technical'" (click)="joinMeeting(iv)" class="btn-icon btn-icon-primary" title="Join Meeting Room">
                       <i class="fa-solid fa-video" style="font-size:0.7rem"></i>
                     </button>
+                    <button (click)="openEditModal(iv)" class="btn-icon btn-icon-primary" title="Edit Interview">
+                      <i class="fa-regular fa-pen-to-square"></i>
+                    </button>
+                    <button (click)="confirmDelete(iv)" class="btn-icon btn-icon-danger" title="Delete Interview">
+                      <i class="fa-regular fa-trash-can"></i>
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -142,16 +153,22 @@ import { JobService } from '../../services/job.service';
 
         <!-- Pagination -->
         <div *ngIf="!loading && filteredInterviews.length > 0" class="pagination-bar">
-          <span class="pagination-info">Showing 1–{{ filteredInterviews.length }} of {{ filteredInterviews.length }} rows</span>
+          <span class="pagination-info">Showing {{ pageStart }}–{{ pageEnd }} of {{ filteredInterviews.length }} rows</span>
           <div style="display:flex;align-items:center;gap:0.5rem">
-            <select class="page-size-select">
-              <option>10 / page</option><option>20 / page</option><option>50 / page</option>
+            <select class="page-size-select" [(ngModel)]="pageSize" (change)="onPageSizeChange()">
+              <option [value]="10">10 / page</option>
+              <option [value]="20">20 / page</option>
+              <option [value]="50">50 / page</option>
             </select>
           </div>
           <div class="pagination-controls">
-            <button class="page-btn" disabled><i class="fa-solid fa-chevron-left" style="font-size:0.6rem"></i>&nbsp;Previous</button>
-            <span style="font-size:0.8125rem;color:var(--muted);padding:0 0.25rem">Page 1 of 1</span>
-            <button class="page-btn" disabled>Next&nbsp;<i class="fa-solid fa-chevron-right" style="font-size:0.6rem"></i></button>
+            <button class="page-btn" (click)="goToPage(currentPage-1)" [disabled]="currentPage===1">
+              <i class="fa-solid fa-chevron-left" style="font-size:0.6rem"></i>&nbsp;Previous
+            </button>
+            <span style="font-size:0.8125rem;color:var(--muted);padding:0 0.25rem">Page {{ currentPage }} of {{ totalPages }}</span>
+            <button class="page-btn" (click)="goToPage(currentPage+1)" [disabled]="currentPage===totalPages">
+              Next&nbsp;<i class="fa-solid fa-chevron-right" style="font-size:0.6rem"></i>
+            </button>
           </div>
         </div>
       </div>
@@ -281,7 +298,7 @@ import { JobService } from '../../services/job.service';
     <!-- Schedule Modal -->
     <div *ngIf="showScheduleModal" class="modal-overlay" (click)="showScheduleModal=false">
       <div class="modal-box" (click)="$event.stopPropagation()">
-        <h3 class="text-lg font-bold mb-4">Schedule Interview</h3>
+        <h3 class="text-lg font-bold mb-4">{{ isEdit ? 'Edit' : 'Schedule' }} Interview</h3>
         <div class="space-y-4">
           <div class="form-group">
             <label class="form-label">Candidate</label>
@@ -315,9 +332,21 @@ import { JobService } from '../../services/job.service';
             <input type="url" [(ngModel)]="newInterview.meetingLink" class="form-input" placeholder="https://meet.google.com/...">
           </div>
           <div class="flex gap-3">
-            <button (click)="scheduleInterview()" class="btn-primary flex-1">Schedule</button>
+            <button (click)="saveInterview()" class="btn-primary flex-1">{{ isEdit ? 'Update' : 'Schedule' }}</button>
             <button (click)="showScheduleModal=false" class="btn-secondary">Cancel</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Soft Delete Confirmation Modal -->
+    <div *ngIf="showDeleteModal" class="modal-overlay" (click)="showDeleteModal=false">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+        <h3 class="text-lg font-bold mb-2 text-brand-text">Confirm Delete</h3>
+        <p class="text-brand-muted mb-4">Are you sure you want to delete this interview for '{{ interviewToDelete?.candidateId?.name }}'? They will be moved to the Recycle Bin.</p>
+        <div class="flex gap-3">
+          <button (click)="executeDelete()" class="btn-danger flex-1" style="background:#DC2626;color:white">Delete</button>
+          <button (click)="showDeleteModal=false" class="btn-secondary">Cancel</button>
         </div>
       </div>
     </div>
@@ -355,26 +384,41 @@ import { JobService } from '../../services/job.service';
 export class InterviewsComponent implements OnInit {
   interviews: any[] = [];
   filteredInterviews: any[] = [];
+  pagedInterviews: any[] = [];
   candidates: any[] = [];
   jobs: any[] = [];
   loading = true;
   search = '';
   statusFilter = '';
   typeFilter = '';
+
+  // Pagination
+  pageSize = 10;
+  currentPage = 1;
+  get totalPages() { return Math.max(1, Math.ceil(this.filteredInterviews.length / this.pageSize)); }
+  get pageStart() { return this.filteredInterviews.length===0?0:(this.currentPage-1)*this.pageSize+1; }
+  get pageEnd()   { return Math.min(this.currentPage*this.pageSize, this.filteredInterviews.length); }
+
   showScheduleModal = false;
   showFeedbackModal = false;
+  isEdit = false;
+  editingId: string | null = null;
   
   // Updated states
   selectedInterview: any = null;
   activeInterview: any = null;
   
-  newInterview = { candidateId: '', jobId: '', interviewerId: '60d21b4667d0d8992e610c85', applicationId: '60d21b4667d0d8992e610c86', type: 'Video', scheduledDate: '', meetingLink: '' };
+  newInterview: any = this.getDefaultInterview();
   feedbackData = { score: 7, result: 'Pass', feedback: '' };
+
+  showDeleteModal = false;
+  interviewToDelete: any = null;
 
   constructor(
     private interviewService: InterviewService,
     private candidateService: CandidateService,
-    private jobService: JobService
+    private jobService: JobService,
+    private toastService: ToastService
   ) {}
 
   ngOnInit() {
@@ -385,8 +429,8 @@ export class InterviewsComponent implements OnInit {
 
   loadInterviews() {
     this.interviewService.getInterviews().subscribe({
-      next: data => { this.interviews = data; this.filteredInterviews = data; this.loading = false; },
-      error: () => { this.interviews = this.getMockInterviews(); this.filteredInterviews = this.interviews; this.loading = false; }
+      next: data => { this.interviews = data; this.applyFilter(); this.loading = false; },
+      error: () => { this.interviews = this.getMockInterviews(); this.applyFilter(); this.loading = false; }
     });
   }
 
@@ -397,31 +441,141 @@ export class InterviewsComponent implements OnInit {
       const matchType = !this.typeFilter || iv.type === this.typeFilter;
       return matchSearch && matchStatus && matchType;
     });
+    this.currentPage = 1;
+    this.updatePage();
+  }
+
+  updatePage() {
+    const start = (this.currentPage - 1) * this.pageSize;
+    this.pagedInterviews = this.filteredInterviews.slice(start, start + this.pageSize);
+  }
+
+  goToPage(page: number) {
+    if (page < 1 || page > this.totalPages) return;
+    this.currentPage = page;
+    this.updatePage();
+  }
+
+  onPageSizeChange() { this.currentPage = 1; this.updatePage(); }
+
+  applyFilter() {
+    this.filter();
   }
 
   countByStatus(status: string): number {
     return this.interviews.filter(iv => iv.status === status).length;
   }
 
-  scheduleInterview() {
-    this.interviewService.scheduleInterview(this.newInterview).subscribe({
-      next: iv => { this.interviews.unshift(iv); this.filter(); this.showScheduleModal = false; },
-      error: () => { 
-        // Fallback for mock environment
-        const mockIv = {
-          _id: Math.random().toString(),
-          candidateId: this.candidates.find(c => c._id === this.newInterview.candidateId) || { name: 'Unknown Candidate', email: 'unknown@example.com' },
-          jobId: this.jobs.find(j => j._id === this.newInterview.jobId) || { title: 'Unknown Job' },
-          type: this.newInterview.type,
-          status: 'Scheduled',
-          scheduledDate: this.newInterview.scheduledDate || new Date().toISOString(),
-          meetingLink: this.newInterview.meetingLink
-        };
-        this.interviews.unshift(mockIv);
-        this.filter();
-        this.showScheduleModal = false;
+  getDefaultInterview() {
+    return { candidateId: '', jobId: '', interviewerId: '60d21b4667d0d8992e610c85', applicationId: '60d21b4667d0d8992e610c86', type: 'Video', scheduledDate: '', meetingLink: '' };
+  }
+
+  openScheduleModal() {
+    this.isEdit = false;
+    this.editingId = null;
+    this.newInterview = this.getDefaultInterview();
+    this.showScheduleModal = true;
+  }
+
+  openEditModal(iv: any) {
+    this.isEdit = true;
+    this.editingId = iv._id;
+    this.newInterview = { 
+      ...iv, 
+      candidateId: iv.candidateId?._id || iv.candidateId,
+      jobId: iv.jobId?._id || iv.jobId,
+      scheduledDate: iv.scheduledDate ? new Date(iv.scheduledDate).toISOString().slice(0, 16) : ''
+    };
+    this.showScheduleModal = true;
+  }
+
+  saveInterview() {
+    if (this.isEdit && this.editingId) {
+      if ((this.interviewService as any).updateInterview) {
+        this.interviewService.updateInterview(this.editingId, this.newInterview).subscribe({
+          next: (iv) => {
+            const idx = this.interviews.findIndex(x => x._id === this.editingId);
+            if (idx !== -1) this.interviews[idx] = iv;
+            this.toastService.success('Interview updated successfully');
+            this.applyFilter();
+            this.showScheduleModal = false;
+          },
+          error: () => {
+            const idx = this.interviews.findIndex(x => x._id === this.editingId);
+            if (idx !== -1) {
+              this.interviews[idx] = { 
+                ...this.interviews[idx], 
+                ...this.newInterview,
+                candidateId: this.candidates.find(c => c._id === this.newInterview.candidateId) || this.interviews[idx].candidateId,
+                jobId: this.jobs.find(j => j._id === this.newInterview.jobId) || this.interviews[idx].jobId
+              };
+            }
+            this.toastService.error('Failed to update interview (Mock)');
+            this.applyFilter();
+            this.showScheduleModal = false;
+          }
+        });
       }
-    });
+    } else {
+      this.interviewService.scheduleInterview(this.newInterview).subscribe({
+        next: iv => { 
+          this.interviews.unshift(iv); 
+          this.toastService.success('Interview scheduled successfully');
+          this.applyFilter(); 
+          this.showScheduleModal = false; 
+        },
+        error: () => { 
+          // Fallback for mock environment
+          const mockIv = {
+            _id: Math.random().toString(),
+            candidateId: this.candidates.find(c => c._id === this.newInterview.candidateId) || { name: 'Unknown Candidate', email: 'unknown@example.com' },
+            jobId: this.jobs.find(j => j._id === this.newInterview.jobId) || { title: 'Unknown Job' },
+            type: this.newInterview.type,
+            status: 'Scheduled',
+            scheduledDate: this.newInterview.scheduledDate || new Date().toISOString(),
+            meetingLink: this.newInterview.meetingLink
+          };
+          this.interviews.unshift(mockIv);
+          this.toastService.success('Interview scheduled successfully (Mock)');
+          this.applyFilter();
+          this.showScheduleModal = false;
+        }
+      });
+    }
+  }
+
+  confirmDelete(iv: any) {
+    this.interviewToDelete = iv;
+    this.showDeleteModal = true;
+  }
+
+  executeDelete() {
+    if (!this.interviewToDelete) return;
+    const id = this.interviewToDelete._id;
+    if ((this.interviewService as any).deleteInterview) {
+      this.interviewService.deleteInterview(id).subscribe({
+        next: () => {
+          this.interviews = this.interviews.filter(i => i._id !== id);
+          this.toastService.success('Interview moved to Recycle Bin');
+          this.applyFilter();
+          this.showDeleteModal = false;
+          this.interviewToDelete = null;
+        },
+        error: () => {
+          this.interviews = this.interviews.filter(i => i._id !== id);
+          this.toastService.error('Interview moved to Recycle Bin (Mock)');
+          this.applyFilter();
+          this.showDeleteModal = false;
+          this.interviewToDelete = null;
+        }
+      });
+    } else {
+      this.interviews = this.interviews.filter(i => i._id !== id);
+      this.toastService.success('Interview moved to Recycle Bin');
+      this.applyFilter();
+      this.showDeleteModal = false;
+      this.interviewToDelete = null;
+    }
   }
 
   openFeedback(iv: any) { this.selectedInterview = iv; this.showFeedbackModal = true; }
@@ -432,12 +586,14 @@ export class InterviewsComponent implements OnInit {
       next: (updated) => {
         const idx = this.interviews.findIndex(iv => iv._id === this.selectedInterview._id);
         if (idx > -1) this.interviews[idx] = { ...this.interviews[idx], ...updated };
+        this.toastService.success('Feedback submitted successfully');
         this.filter();
         this.showFeedbackModal = false;
       },
       error: () => {
         const idx = this.interviews.findIndex(iv => iv._id === this.selectedInterview._id);
         if (idx > -1) { this.interviews[idx].status = 'Completed'; this.interviews[idx].score = this.feedbackData.score; this.interviews[idx].result = this.feedbackData.result; }
+        this.toastService.success('Feedback submitted successfully (Mock)');
         this.filter();
         this.showFeedbackModal = false;
       }

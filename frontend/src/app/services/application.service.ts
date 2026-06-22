@@ -20,4 +20,16 @@ export class ApplicationService {
   getAnalytics(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/analytics`);
   }
+  deleteApplication(id: string): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/${id}`);
+  }
+  getDeletedApplications(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/deleted`);
+  }
+  restoreApplication(id: string): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/${id}/restore`, {});
+  }
+  permanentDeleteApplication(id: string): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/${id}/permanent`);
+  }
 }

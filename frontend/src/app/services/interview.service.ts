@@ -23,4 +23,19 @@ export class InterviewService {
   submitFeedback(id: string, data: any): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/${id}/feedback`, data);
   }
+  deleteInterview(id: string): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/${id}`);
+  }
+  getInterviewAnalytics(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/analytics`);
+  }
+  getDeletedInterviews(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/deleted`);
+  }
+  restoreInterview(id: string): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/${id}/restore`, {});
+  }
+  permanentDeleteInterview(id: string): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/${id}/permanent`);
+  }
 }

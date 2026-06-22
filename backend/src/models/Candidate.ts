@@ -12,6 +12,9 @@ export interface ICandidate extends Document {
   certifications: string[];
   aiScore?: number;
   aiSummary?: string;
+  source?: string;
+  status?: string;
+  isDeleted: boolean;
   userId?: mongoose.Schema.Types.ObjectId;
   createdAt: Date;
 }
@@ -36,6 +39,9 @@ const CandidateSchema: Schema = new Schema({
   certifications: [{ type: String }],
   aiScore: { type: Number, default: 0 },
   aiSummary: { type: String },
+  source: { type: String, default: 'Direct' },
+  status: { type: String, default: 'Active' },
+  isDeleted: { type: Boolean, default: false },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
 

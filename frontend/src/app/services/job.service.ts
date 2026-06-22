@@ -29,4 +29,13 @@ export class JobService {
   getJobAnalytics(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/analytics`);
   }
+  getDeletedJobs(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/deleted`);
+  }
+  restoreJob(id: string): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/${id}/restore`, {});
+  }
+  permanentDeleteJob(id: string): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/${id}/permanent`);
+  }
 }
